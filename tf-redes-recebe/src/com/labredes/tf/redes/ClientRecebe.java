@@ -11,9 +11,15 @@ class ClientRecebe {
         // cria socket do servidor com a porta 9876
         DatagramSocket serverSocket = new DatagramSocket(9876);
 
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        ObjectOutputStream oos = new ObjectOutputStream(baos);
+
+
         byte[] receiveData = new byte[1024];
 
         byte[] testData = new byte[1024];
+
+
 
         while(true)
         {
