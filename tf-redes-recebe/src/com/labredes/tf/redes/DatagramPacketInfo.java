@@ -1,7 +1,5 @@
 package com.labredes.tf.redes;
 
-import com.google.gson.annotations.SerializedName;
-
 public class DatagramPacketInfo {
 
     public DatagramPacketInfo() {
@@ -18,6 +16,8 @@ public class DatagramPacketInfo {
     private String CRC;
 
     private int seq;
+
+    private int amountOfPacketsSent;
 
     public byte[] getFileData() {
         return fileData;

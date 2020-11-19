@@ -3,24 +3,33 @@ package com.labredes.tf.redes;
 import com.google.gson.Gson;
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 public class ClientEnvia {
 
     public static void main(String args[]) throws Exception {
         System.out.println("Iniciou");
 
-        // declara socket cliente
-        DatagramSocket clientSocket = new DatagramSocket();
+        //estabelecendo que esse socket roda na porta 6789
+        DatagramSocket clientSocket = new DatagramSocket(6789);
 
-        // obtem endereco IP do servidor com o DNS
-        InetAddress IPAddress = InetAddress.getByName("localhost");
+        InetAddress ipAddress = InetAddress.getByName("localhost");
+        int port = 9876;
+        final int SLOW_START_MAX_DATA_PACKAGES = 8;
+        List<DatagramPacketInfo> packets = new ArrayList<>();
 
-        byte[] receiveData = new byte[1024];
+        packets.add(new DatagramPacketInfo("abcd".getBytes(), "CRC", 2));
+        packets.add(new DatagramPacketInfo("2".getBytes(), "CRC", 3));
+        packets.add(new DatagramPacketInfo("3".getBytes(), "CRC", 4));
+        packets.add(new DatagramPacketInfo("4".getBytes(), "CRC", 5));
+
 
         // cria o stream do teclado para ler caminho do arquivo
         BufferedReader inFromUser = new BufferedReader(new InputStreamReader(System.in));
@@ -28,12 +37,11 @@ public class ClientEnvia {
         System.out.println("Digite o caminho do arquivo");
         byte[] filePath = inFromUser.readLine().getBytes();
 
-        //comentado pq ainda n tamo fragmentando
+        //comentado pq ainda n tamo fragmentando arquivo
 //        Path path = Paths.get(filePath);
 //
 //        String data = Files.readAllLines(path).get(0);
 //
-//        List<byte[]> packetsData = new ArrayList<>();
 //
 //        //1 caracter = 1 byte, então 300 bytes = 300 caracteres
 //        int endIndex = 300;
@@ -44,40 +52,86 @@ public class ClientEnvia {
 //                    data.substring(startIndex, endIndex).getBytes()
 //            );
 //        }
+
+        initializeSlowStart(packets, clientSocket, ipAddress, port, SLOW_START_MAX_DATA_PACKAGES);
+
+
+//        DatagramPacketInfo sendData = new DatagramPacketInfo(filePath, "CRC", 1);
 //
-//        //aqui será feito o envio pacote a pacote ao socket
-//        for (int i = 0; i < packetsData.stream().count(); i++) {
-//            //DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, IPAddress, 9876);
-//        }
-
-        DatagramPacketInfo sendData = new DatagramPacketInfo(filePath, "CRC", 1);
-
-//        Gson gson = new Gson();
-//        String json = gson.toJson(sendData);
+//        String message = Arrays.toString(sendData.getFileData()) + "-" + sendData.getCRC() + "-" + sendData.getSeq();
 //
-//        System.out.println("JSON formado: " + json);
+//        System.out.println("mensagem pra enviar: " + message);
 //
-//        byte[] packetData = json.getBytes();
-
-        String message = Arrays.toString(sendData.getFileData()) + "-" + sendData.getCRC() + "-" + sendData.getSeq();
-
-        System.out.println("mensagem pra enviar: " + message);
-
-        byte[] packetData = message.getBytes();
-
-        DatagramPacket sendPacket = new DatagramPacket(packetData, packetData.length, IPAddress, 9876);
-
-        //envia o pacote
-        clientSocket.send(sendPacket);
-
-        //recebendo resposta
-        DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
-
-        clientSocket.receive(receivePacket);
-
-        System.out.println("Chegou mensagem: " + new String(receivePacket.getData()));
+//        byte[] packetData = message.getBytes();
+//
+//        DatagramPacket sendPacket = new DatagramPacket(packetData, packetData.length, ipAddress, port);
+//
+//        clientSocket.send(sendPacket);
+//
+//        byte[] receiveData = new byte[1024];
+//        DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
+//
+//        clientSocket.receive(receivePacket);
+//
+//        System.out.println("Chegou mensagem: " + new String(receivePacket.getData()));
 
         // fecha o cliente
         //clientSocket.close();
+    }
+
+    public static void initializeSlowStart(List<DatagramPacketInfo> packets, DatagramSocket socket, InetAddress ipAddress, int port, int packageLimit) throws Exception {
+        int pacotesParaEnviar = 1;
+        int pacotesMaximos = 8;
+
+        byte[] responseData = new byte[1024];
+        DatagramPacket receivePacket = new DatagramPacket(responseData, responseData.length, ipAddress, port);
+
+        int listIterator = 0;
+
+        DatagramPacketInfo info;
+
+        while (pacotesParaEnviar <= pacotesMaximos) {
+            for (listIterator = listIterator; listIterator < pacotesParaEnviar; listIterator++) {
+                try {
+                    info = packets.get(listIterator);
+                } catch (Exception ex) {
+                    //acabou de iterar, enviou tudo
+                    break;
+                }
+
+                String message = Arrays.toString(info.getFileData()) + "-" + info.getCRC() + "-" + info.getSeq();
+
+                System.out.println("enviando mensagem: " + message);
+
+                byte[] packetData = message.getBytes();
+
+                DatagramPacket sendPacket = new DatagramPacket(packetData, packetData.length, ipAddress, port);
+
+                socket.send(sendPacket);
+
+                socket.receive(receivePacket);
+
+                DatagramPacketResponse response = parseMessage(receivePacket);
+
+                //recebeu o ACK, tudo ok
+                if (response.getMessage() == "ACK" && response.getSeq() == info.getSeq() + 1) {
+                    System.out.println("tudo ok");
+                }
+
+                //ACK duplicado, deu pau..
+                if (response.getSeq() == info.getSeq()) {
+                    System.out.println("recebeu um ack duplicado");
+                }
+            }
+
+            pacotesParaEnviar *= 2;
+        }
+
+    }
+
+    public static DatagramPacketResponse parseMessage(DatagramPacket message) {
+        String[] split = new String(message.getData()).split("-");
+
+        return new DatagramPacketResponse(split[0], Integer.parseInt(split[1].trim()));
     }
 }

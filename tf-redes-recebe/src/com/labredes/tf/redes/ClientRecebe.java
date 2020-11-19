@@ -10,25 +10,22 @@ import com.google.gson.stream.JsonReader;
 
 
 class ClientRecebe {
-    public static void main(String args[])  throws Exception
-    {
+    public static void main(String args[]) throws Exception {
         System.out.println("Iniciou");
 
-        // cria socket do servidor com a porta 9876
+        //estabelecendo que esse socket roda na porta 9876
         DatagramSocket serverSocket = new DatagramSocket(9876);
 
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        ObjectOutputStream oos = new ObjectOutputStream(baos);
+        byte[] receiveData;
 
-        byte[] receiveData = new byte[1024];
+        byte[] testData;
 
-        byte[] testData = new byte[1024];
+        while (true) {
+            receiveData = new byte[1024];
+            testData = new byte[1024];
 
-
-        while(true)
-        {
+            //Primeiro pacote, só pra dizer
             DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
-
             serverSocket.receive(receivePacket);
 
             String receivedMessage = new String(receivePacket.getData());
@@ -37,33 +34,37 @@ class ClientRecebe {
 
             int port = receivePacket.getPort();
 
-            System.out.println("Mensagem recebida: " + receivedMessage);
+            System.out.println("Mensagem recebida: " + receivedMessage.replace("-", " - "));
+
+            DatagramPacketInfo packetInfo = parseMessage(receivedMessage);
 
             DatagramPacket response = new DatagramPacket(testData, testData.length, IPAddress, port);
 
-            response.setData(new byte[] { 'O', 'i', ' ', 'c', 'h', 'e', 'g', 'u', 'e', 'i'});
+            response.setData(("ACK-" + packetInfo.getSeq() + 1).getBytes());
 
             serverSocket.send(response);
 
-            //Gson gson = new Gson();
-            //n quer funciona entao fodase
-            //DatagramPacketInfo packetInfo = gson.fromJson(receivedMessage, DatagramPacketInfo.class);
-
-            DatagramPacketInfo packetInfo = new DatagramPacketInfo();
-
-            String[] message = receivedMessage.split("-");
-
-            packetInfo.setFileData(fazGambiarra(message[0]));
-            packetInfo.setCRC(message[1]);
-            packetInfo.setSeq(Integer.parseInt(message[2].trim()));
-
-
-            System.out.println("asva");
         }
     }
 
-    public static byte[] fazGambiarra(String message){
-        String gambiarraInicial = message.replace("[", "").replace("]", "").replace(" ", "");
+    public static DatagramPacketInfo parseMessage(String message) {
+        DatagramPacketInfo packetInfo = new DatagramPacketInfo();
+
+        String[] splitMessage = message.split("-");
+
+        packetInfo.setFileData(fazGambiarra(splitMessage[0]));
+        packetInfo.setCRC(splitMessage[1]);
+        packetInfo.setSeq(Integer.parseInt(splitMessage[2].trim()));
+
+        return packetInfo;
+    }
+
+    //monta o fileData do DatagramPacketInfo
+    public static byte[] fazGambiarra(String message) {
+        String gambiarraInicial = message
+                .replace("[", "")
+                .replace("]", "")
+                .replace(" ", "");
 
         String[] gambiarraParte2 = gambiarraInicial.split(",");
 
