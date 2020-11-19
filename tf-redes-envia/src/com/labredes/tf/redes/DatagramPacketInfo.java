@@ -4,19 +4,19 @@ import com.google.gson.annotations.SerializedName;
 
 public class DatagramPacketInfo {
 
+    public DatagramPacketInfo() {
+    }
+
     public DatagramPacketInfo(byte[] fileData, String CRC, int seq) {
         this.fileData = fileData;
         this.CRC = CRC;
         this.seq = seq;
     }
 
-    @SerializedName("fileData")
     private byte[] fileData;
 
-    @SerializedName("CRC")
     private String CRC;
 
-    @SerializedName("seq")
     private int seq;
 
     public byte[] getFileData() {

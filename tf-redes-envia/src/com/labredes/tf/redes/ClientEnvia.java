@@ -7,6 +7,7 @@ import java.io.InputStreamReader;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.util.Arrays;
 
 public class ClientEnvia {
 
@@ -51,12 +52,19 @@ public class ClientEnvia {
 
         DatagramPacketInfo sendData = new DatagramPacketInfo(filePath, "CRC", 1);
 
-        Gson gson = new Gson();
-        String json = gson.toJson(sendData);
+//        Gson gson = new Gson();
+//        String json = gson.toJson(sendData);
+//
+//        System.out.println("JSON formado: " + json);
+//
+//        byte[] packetData = json.getBytes();
 
-        System.out.println("JSON formado: " + json);
+        String message = Arrays.toString(sendData.getFileData()) + "-" + sendData.getCRC() + "-" + sendData.getSeq();
 
-        byte[] packetData = json.getBytes();
+        System.out.println("mensagem pra enviar: " + message);
+
+        byte[] packetData = message.getBytes();
+
         DatagramPacket sendPacket = new DatagramPacket(packetData, packetData.length, IPAddress, 9876);
 
         //envia o pacote
