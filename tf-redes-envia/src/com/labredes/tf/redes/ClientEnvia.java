@@ -1,6 +1,5 @@
 package com.labredes.tf.redes;
 
-import com.google.gson.Gson;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -25,10 +24,23 @@ public class ClientEnvia {
         final int SLOW_START_MAX_DATA_PACKAGES = 8;
         List<DatagramPacketInfo> packets = new ArrayList<>();
 
+        //16 pacotes
         packets.add(new DatagramPacketInfo("abcd".getBytes(), "CRC", 2));
         packets.add(new DatagramPacketInfo("2".getBytes(), "CRC", 3));
         packets.add(new DatagramPacketInfo("3".getBytes(), "CRC", 4));
         packets.add(new DatagramPacketInfo("4".getBytes(), "CRC", 5));
+        packets.add(new DatagramPacketInfo("5".getBytes(), "CRC", 6));
+        packets.add(new DatagramPacketInfo("6".getBytes(), "CRC", 7));
+        packets.add(new DatagramPacketInfo("7".getBytes(), "CRC", 8));
+        packets.add(new DatagramPacketInfo("8".getBytes(), "CRC", 9));
+        packets.add(new DatagramPacketInfo("9".getBytes(), "CRC", 10));
+        packets.add(new DatagramPacketInfo("10".getBytes(), "CRC", 11));
+        packets.add(new DatagramPacketInfo("11".getBytes(), "CRC", 12));
+        packets.add(new DatagramPacketInfo("12".getBytes(), "CRC", 13));
+        packets.add(new DatagramPacketInfo("13".getBytes(), "CRC", 14));
+        packets.add(new DatagramPacketInfo("14".getBytes(), "CRC", 15));
+        packets.add(new DatagramPacketInfo("15".getBytes(), "CRC", 16));
+        packets.add(new DatagramPacketInfo("16".getBytes(), "CRC", 17));
 
 
         // cria o stream do teclado para ler caminho do arquivo
@@ -53,7 +65,9 @@ public class ClientEnvia {
 //            );
 //        }
 
-        initializeSlowStart(packets, clientSocket, ipAddress, port, SLOW_START_MAX_DATA_PACKAGES);
+        int listIterator = initializeSlowStart(packets, clientSocket, ipAddress, port, SLOW_START_MAX_DATA_PACKAGES);
+
+        CongestionAvoidance(packets, clientSocket, ipAddress, port, listIterator);
 
 
 //        DatagramPacketInfo sendData = new DatagramPacketInfo(filePath, "CRC", 1);
@@ -79,9 +93,8 @@ public class ClientEnvia {
         //clientSocket.close();
     }
 
-    public static void initializeSlowStart(List<DatagramPacketInfo> packets, DatagramSocket socket, InetAddress ipAddress, int port, int packageLimit) throws Exception {
+    public static int initializeSlowStart(List<DatagramPacketInfo> packets, DatagramSocket socket, InetAddress ipAddress, int port, int packageLimit) throws Exception {
         int pacotesParaEnviar = 1;
-        int pacotesMaximos = 8;
 
         byte[] responseData = new byte[1024];
         DatagramPacket receivePacket = new DatagramPacket(responseData, responseData.length, ipAddress, port);
@@ -90,7 +103,7 @@ public class ClientEnvia {
 
         DatagramPacketInfo info;
 
-        while (pacotesParaEnviar <= pacotesMaximos) {
+        while (pacotesParaEnviar <= packageLimit) {
             for (listIterator = listIterator; listIterator < pacotesParaEnviar; listIterator++) {
                 try {
                     info = packets.get(listIterator);
@@ -127,6 +140,58 @@ public class ClientEnvia {
             pacotesParaEnviar *= 2;
         }
 
+        return listIterator;
+    }
+
+    public static void CongestionAvoidance(List<DatagramPacketInfo> packets, DatagramSocket socket, InetAddress ipAddress, int port, int listIterator) throws IOException {
+
+        byte[] responseData = new byte[1024];
+        DatagramPacket receivePacket = new DatagramPacket(responseData, responseData.length, ipAddress, port);
+
+        DatagramPacketInfo info;
+
+        int quantPacketSend = 3;
+
+        while(packets.size() != listIterator) {
+
+            for (int i = 0; i < quantPacketSend; i++) {
+
+                try {
+                    info = packets.get(listIterator);
+                } catch (Exception ex) {
+                    //acabou de iterar, enviou tudo
+                    break;
+                }
+
+                String message = Arrays.toString(info.getFileData()) + "-" + info.getCRC() + "-" + info.getSeq();
+
+                System.out.println("enviando mensagem: " + message);
+
+                byte[] packetData = message.getBytes();
+
+                DatagramPacket sendPacket = new DatagramPacket(packetData, packetData.length, ipAddress, port);
+
+                socket.send(sendPacket);
+
+                socket.receive(receivePacket);
+
+                DatagramPacketResponse response = parseMessage(receivePacket);
+
+                //recebeu o ACK, tudo ok
+                if (response.getMessage() == "ACK" && response.getSeq() == info.getSeq() + 1) {
+                    System.out.println("tudo ok");
+                }
+
+                //ACK duplicado, deu pau..
+                if (response.getSeq() == info.getSeq()) {
+                    System.out.println("recebeu um ack duplicado");
+                }
+
+                listIterator++;
+            }
+
+            quantPacketSend++;
+        }
     }
 
     public static DatagramPacketResponse parseMessage(DatagramPacket message) {

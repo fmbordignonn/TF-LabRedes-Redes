@@ -4,9 +4,7 @@ import java.io.*;
 import java.net.*;
 import java.util.Arrays;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.stream.JsonReader;
+
 
 
 class ClientRecebe {
