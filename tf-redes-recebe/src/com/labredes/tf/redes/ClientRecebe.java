@@ -19,6 +19,9 @@ class ClientRecebe {
         byte[] testData;
 
         while (true) {
+
+            Thread.sleep(2000);
+
             receiveData = new byte[1024];
             testData = new byte[1024];
 
@@ -41,8 +44,6 @@ class ClientRecebe {
             response.setData(("ACK-" + packetInfo.getSeq() + 1).getBytes());
 
             serverSocket.send(response);
-
-            Thread.sleep(2000);
 
         }
     }

@@ -13,6 +13,10 @@ import java.util.zip.CRC32;
 
 public class ClientEnvia {
 
+    static List<DatagramPacketInfo> packets = new ArrayList<>();
+
+    static final int SLOW_START_MAX_DATA_PACKAGES = 8;
+
     public static void main(String args[]) throws Exception {
         Scanner in = new Scanner(System.in);
 
@@ -47,71 +51,11 @@ public class ClientEnvia {
         System.out.println("\nConexão estabelecida!");
 
         int port = 9876;
-        final int SLOW_START_MAX_DATA_PACKAGES = 8;
-        List<DatagramPacketInfo> packets = new ArrayList<>();
-
-        DatagramPacketInfo pacote = new DatagramPacketInfo("abcd".getBytes(), 2, 2);
-
-        long valor = 1215645;
-
-        //16 pacotes
-        packets.add(new DatagramPacketInfo("abcd".getBytes(), valor, 2));
-        packets.add(new DatagramPacketInfo("2".getBytes(), valor, 3));
-        packets.add(new DatagramPacketInfo("3".getBytes(), valor, 4));
-        packets.add(new DatagramPacketInfo("4".getBytes(), valor, 5));
-        packets.add(new DatagramPacketInfo("5".getBytes(), valor, 6));
-        packets.add(new DatagramPacketInfo("abcd".getBytes(), valor, 2));
-        packets.add(new DatagramPacketInfo("2".getBytes(), valor, 3));
-        packets.add(new DatagramPacketInfo("3".getBytes(), valor, 4));
-        packets.add(new DatagramPacketInfo("4".getBytes(), valor, 5));
-        packets.add(new DatagramPacketInfo("5".getBytes(), valor, 6));
-        packets.add(new DatagramPacketInfo("abcd".getBytes(), valor, 2));
-        packets.add(new DatagramPacketInfo("2".getBytes(), valor, 3));
-        packets.add(new DatagramPacketInfo("3".getBytes(), valor, 4));
-        packets.add(new DatagramPacketInfo("4".getBytes(), valor, 5));
-        packets.add(new DatagramPacketInfo("5".getBytes(), valor, 6));
-        packets.add(new DatagramPacketInfo("abcd".getBytes(), valor, 2));
-        packets.add(new DatagramPacketInfo("2".getBytes(), valor, 3));
-        packets.add(new DatagramPacketInfo("3".getBytes(), valor, 4));
-        packets.add(new DatagramPacketInfo("4".getBytes(), valor, 5));
-        packets.add(new DatagramPacketInfo("5".getBytes(), valor, 6));
 
 
+        createPackets();
 
-        // cria o stream do teclado para ler caminho do arquivo
-        BufferedReader inFromUser = new BufferedReader(new InputStreamReader(System.in));
 
-        System.out.println("Digite o caminho do arquivo");
-        byte[] filePath = inFromUser.readLine().getBytes();
-
-        File file = new File("input/input.txt/");
-        try (Scanner s = new Scanner(file)){
-
-            int numeroSequencia = 0;
-            while(s.hasNext()) {
-
-                String conteudoPacote = "";
-                for(int i=0; i < 300; i++) {
-
-                    if(s.hasNext()) {
-                        conteudoPacote += s.next();
-                    }
-                }
-
-                byte[] arrayBytes = conteudoPacote.getBytes();
-
-                //System.out.println("tamanho do array: " + arrayBytes.length);
-
-                long crc = calculaCRC(arrayBytes);
-
-                packets.add(new DatagramPacketInfo(arrayBytes, crc, numeroSequencia));
-
-                numeroSequencia++;
-
-            }
-        }catch (FileNotFoundException e){
-            throw new FileNotFoundException("input.txt not found in the program directory!");
-        }
 
         //comentado pq ainda n tamo fragmentando arquivo
 //        Path path = Paths.get(filePath);
@@ -165,9 +109,82 @@ public class ClientEnvia {
 
         long valor = crc.getValue();
 
-        System.out.println("Valor crc: " + valor);
+        //System.out.println("Valor crc: " + valor);
 
         return valor;
+    }
+
+    public static void createPackets() throws Exception {
+
+        Scanner in = new Scanner(System.in);
+
+        System.out.println("\n---- Escolha um arquivo ----\n");
+        System.out.println("1 - case 1, 300 bytes");
+        System.out.println("2 - case 1, ? bytes");
+        int input = in.nextInt();
+
+        String filepath = "C:\\Users\\feeel\\Desktop\\TF-LabRedes-Redes\\tf-redes-envia\\input\\case1.txt";
+
+        long valor = 1215645;
+
+        //16 pacotes
+        packets.add(new DatagramPacketInfo("abcd".getBytes(), valor, 2));
+        packets.add(new DatagramPacketInfo("2".getBytes(), valor, 3));
+        packets.add(new DatagramPacketInfo("3".getBytes(), valor, 4));
+        packets.add(new DatagramPacketInfo("4".getBytes(), valor, 5));
+        packets.add(new DatagramPacketInfo("5".getBytes(), valor, 6));
+        packets.add(new DatagramPacketInfo("abcd".getBytes(), valor, 2));
+        packets.add(new DatagramPacketInfo("2".getBytes(), valor, 3));
+        packets.add(new DatagramPacketInfo("3".getBytes(), valor, 4));
+        packets.add(new DatagramPacketInfo("4".getBytes(), valor, 5));
+        packets.add(new DatagramPacketInfo("5".getBytes(), valor, 6));
+        packets.add(new DatagramPacketInfo("abcd".getBytes(), valor, 2));
+        packets.add(new DatagramPacketInfo("2".getBytes(), valor, 3));
+        packets.add(new DatagramPacketInfo("3".getBytes(), valor, 4));
+        packets.add(new DatagramPacketInfo("4".getBytes(), valor, 5));
+        packets.add(new DatagramPacketInfo("5".getBytes(), valor, 6));
+        packets.add(new DatagramPacketInfo("abcd".getBytes(), valor, 2));
+        packets.add(new DatagramPacketInfo("2".getBytes(), valor, 3));
+        packets.add(new DatagramPacketInfo("3".getBytes(), valor, 4));
+        packets.add(new DatagramPacketInfo("4".getBytes(), valor, 5));
+        packets.add(new DatagramPacketInfo("5".getBytes(), valor, 6));
+
+        // cria o stream do teclado para ler caminho do arquivo
+        BufferedReader inFromUser = new BufferedReader(new InputStreamReader(System.in));
+
+        System.out.println("Digite o caminho do arquivo");
+        byte[] filePath = inFromUser.readLine().getBytes();
+
+        File file = new File(filepath);
+        try (Scanner s = new Scanner(file)){
+
+            int numeroSequencia = 0;
+            while(s.hasNext()) {
+
+                String conteudoPacote = "";
+                for(int i=0; i < 300; i++) {
+
+                    if(s.hasNext()) {
+                        conteudoPacote += s.next();
+                    }
+                }
+
+                byte[] arrayBytes = conteudoPacote.getBytes();
+
+                //System.out.println("tamanho do array: " + arrayBytes.length);
+
+                long crc = calculaCRC(arrayBytes);
+
+                packets.add(new DatagramPacketInfo(arrayBytes, crc, numeroSequencia));
+
+                numeroSequencia++;
+
+            }
+        }catch (IOException e){
+            throw new FileNotFoundException("can't find file directory!");
+        }
+
+        in.close();
     }
 
     public static int initializeSlowStart(List<DatagramPacketInfo> packets, DatagramSocket socket, InetAddress ipAddress, int port, int packageLimit) throws Exception {
