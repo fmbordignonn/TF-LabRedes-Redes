@@ -1,9 +1,7 @@
 package com.labredes.tf.redes;
 
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
@@ -16,12 +14,11 @@ import java.util.zip.CRC32;
 public class ClientEnvia {
 
     public static void main(String args[]) throws Exception {
-        BufferedReader inFromUser = new BufferedReader(new InputStreamReader(System.in));
         Scanner in = new Scanner(System.in);
 
-        System.out.println("---- Terminal ----\n");
         int input;
         do {
+            System.out.println("\n---- Terminal ----\n");
             System.out.println("Aperte 1 para estabelecer conexão");
             System.out.println("Aperte 0 para sair");
             input = in.nextInt();
@@ -38,9 +35,8 @@ public class ClientEnvia {
 
 
 
-
-
     }
+
 
     public static void startConection() throws Exception {
         //estabelecendo que esse socket roda na porta 6789
@@ -50,21 +46,13 @@ public class ClientEnvia {
 
         System.out.println("\nConexão estabelecida!");
 
-
         int port = 9876;
         final int SLOW_START_MAX_DATA_PACKAGES = 8;
         List<DatagramPacketInfo> packets = new ArrayList<>();
 
         DatagramPacketInfo pacote = new DatagramPacketInfo("abcd".getBytes(), 2, 2);
 
-        CRC32 crc = new CRC32();
-
-        crc.update("abcd".getBytes());
-
-        long valor = crc.getValue();
-
-        System.out.println("Valor crc: " + valor);
-
+        long valor = 1215645;
 
         //16 pacotes
         packets.add(new DatagramPacketInfo("abcd".getBytes(), valor, 2));
@@ -95,6 +83,33 @@ public class ClientEnvia {
 
         System.out.println("Digite o caminho do arquivo");
         byte[] filePath = inFromUser.readLine().getBytes();
+
+        File file = new File("input/input.txt/");
+        try (Scanner s = new Scanner(file)){
+
+            int numeroSequencia = 0;
+            while(s.hasNext()) {
+
+                String conteudoPacote = "";
+                for(int i=0; i < 300; i++) {
+
+                    if(s.hasNext()) {
+                        conteudoPacote += s.next();
+                    }
+                }
+
+                byte[] arrayBytes = conteudoPacote.getBytes();
+
+                //System.out.println("tamanho do array: " + arrayBytes.length);
+
+                long crc = calculaCRC(arrayBytes);
+
+                packets.add(new DatagramPacketInfo(arrayBytes, crc, numeroSequencia));
+
+            }
+        }catch (FileNotFoundException e){
+            throw new FileNotFoundException("input.txt not found in the program directory!");
+        }
 
         //comentado pq ainda n tamo fragmentando arquivo
 //        Path path = Paths.get(filePath);
@@ -137,6 +152,20 @@ public class ClientEnvia {
 
         // fecha o cliente
         //clientSocket.close();
+
+        System.out.println("\nConexão encerrada!");
+    }
+
+    public static long calculaCRC(byte[] array) {
+        CRC32 crc = new CRC32();
+
+        crc.update(array);
+
+        long valor = crc.getValue();
+
+        System.out.println("Valor crc: " + valor);
+
+        return valor;
     }
 
     public static int initializeSlowStart(List<DatagramPacketInfo> packets, DatagramSocket socket, InetAddress ipAddress, int port, int packageLimit) throws Exception {
