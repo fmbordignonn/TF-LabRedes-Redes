@@ -10,17 +10,47 @@ import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Scanner;
 import java.util.zip.CRC32;
 
 public class ClientEnvia {
 
     public static void main(String args[]) throws Exception {
-        System.out.println("Iniciou");
+        BufferedReader inFromUser = new BufferedReader(new InputStreamReader(System.in));
+        Scanner in = new Scanner(System.in);
 
+        System.out.println("---- Terminal ----\n");
+        int input;
+        do {
+            System.out.println("Aperte 1 para estabelecer conexão");
+            System.out.println("Aperte 0 para sair");
+            input = in.nextInt();
+
+            switch (input) {
+                case 1: startConection();
+                        break;
+
+                default: break;
+            }
+        }while(input != 0);
+
+        in.close();
+
+
+
+
+
+    }
+
+    public static void startConection() throws Exception {
         //estabelecendo que esse socket roda na porta 6789
         DatagramSocket clientSocket = new DatagramSocket(6789);
 
         InetAddress ipAddress = InetAddress.getByName("localhost");
+
+        System.out.println("\nConexão estabelecida!");
+
+
         int port = 9876;
         final int SLOW_START_MAX_DATA_PACKAGES = 8;
         List<DatagramPacketInfo> packets = new ArrayList<>();
@@ -86,8 +116,7 @@ public class ClientEnvia {
 
         CongestionAvoidance(packets, clientSocket, ipAddress, port, listIterator);
 
-
-//        DatagramPacketInfo sendData = new DatagramPacketInfo(filePath, "CRC", 1);
+        //        DatagramPacketInfo sendData = new DatagramPacketInfo(filePath, "CRC", 1);
 //
 //        String message = Arrays.toString(sendData.getFileData()) + "-" + sendData.getCRC() + "-" + sendData.getSeq();
 //
