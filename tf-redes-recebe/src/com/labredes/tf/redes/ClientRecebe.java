@@ -42,6 +42,8 @@ class ClientRecebe {
 
             serverSocket.send(response);
 
+            Thread.sleep(2000);
+
         }
     }
 

@@ -106,6 +106,8 @@ public class ClientEnvia {
 
                 packets.add(new DatagramPacketInfo(arrayBytes, crc, numeroSequencia));
 
+                numeroSequencia++;
+
             }
         }catch (FileNotFoundException e){
             throw new FileNotFoundException("input.txt not found in the program directory!");
