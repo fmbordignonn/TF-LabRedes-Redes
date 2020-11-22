@@ -5,7 +5,7 @@ public class DatagramPacketInfo {
     public DatagramPacketInfo() {
     }
 
-    public DatagramPacketInfo(byte[] fileData, String CRC, int seq) {
+    public DatagramPacketInfo(byte[] fileData, long CRC, int seq) {
         this.fileData = fileData;
         this.CRC = CRC;
         this.seq = seq;
@@ -13,7 +13,7 @@ public class DatagramPacketInfo {
 
     private byte[] fileData;
 
-    private String CRC;
+    private long CRC;
 
     private int seq;
 
@@ -27,11 +27,11 @@ public class DatagramPacketInfo {
         this.fileData = fileData;
     }
 
-    public String getCRC() {
+    public long getCRC() {
         return CRC;
     }
 
-    public void setCRC(String CRC) {
+    public void setCRC(long CRC) {
         this.CRC = CRC;
     }
 

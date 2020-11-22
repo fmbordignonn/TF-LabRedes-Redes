@@ -10,6 +10,7 @@ import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.zip.CRC32;
 
 public class ClientEnvia {
 
@@ -24,23 +25,39 @@ public class ClientEnvia {
         final int SLOW_START_MAX_DATA_PACKAGES = 8;
         List<DatagramPacketInfo> packets = new ArrayList<>();
 
+        DatagramPacketInfo pacote = new DatagramPacketInfo("abcd".getBytes(), 2, 2);
+
+        CRC32 crc = new CRC32();
+
+        crc.update("abcd".getBytes());
+
+        long valor = crc.getValue();
+
+        System.out.println("Valor crc: " + valor);
+
+
         //16 pacotes
-        packets.add(new DatagramPacketInfo("abcd".getBytes(), "CRC", 2));
-        packets.add(new DatagramPacketInfo("2".getBytes(), "CRC", 3));
-        packets.add(new DatagramPacketInfo("3".getBytes(), "CRC", 4));
-        packets.add(new DatagramPacketInfo("4".getBytes(), "CRC", 5));
-        packets.add(new DatagramPacketInfo("5".getBytes(), "CRC", 6));
-        packets.add(new DatagramPacketInfo("6".getBytes(), "CRC", 7));
-        packets.add(new DatagramPacketInfo("7".getBytes(), "CRC", 8));
-        packets.add(new DatagramPacketInfo("8".getBytes(), "CRC", 9));
-        packets.add(new DatagramPacketInfo("9".getBytes(), "CRC", 10));
-        packets.add(new DatagramPacketInfo("10".getBytes(), "CRC", 11));
-        packets.add(new DatagramPacketInfo("11".getBytes(), "CRC", 12));
-        packets.add(new DatagramPacketInfo("12".getBytes(), "CRC", 13));
-        packets.add(new DatagramPacketInfo("13".getBytes(), "CRC", 14));
-        packets.add(new DatagramPacketInfo("14".getBytes(), "CRC", 15));
-        packets.add(new DatagramPacketInfo("15".getBytes(), "CRC", 16));
-        packets.add(new DatagramPacketInfo("16".getBytes(), "CRC", 17));
+        packets.add(new DatagramPacketInfo("abcd".getBytes(), valor, 2));
+        packets.add(new DatagramPacketInfo("2".getBytes(), valor, 3));
+        packets.add(new DatagramPacketInfo("3".getBytes(), valor, 4));
+        packets.add(new DatagramPacketInfo("4".getBytes(), valor, 5));
+        packets.add(new DatagramPacketInfo("5".getBytes(), valor, 6));
+        packets.add(new DatagramPacketInfo("abcd".getBytes(), valor, 2));
+        packets.add(new DatagramPacketInfo("2".getBytes(), valor, 3));
+        packets.add(new DatagramPacketInfo("3".getBytes(), valor, 4));
+        packets.add(new DatagramPacketInfo("4".getBytes(), valor, 5));
+        packets.add(new DatagramPacketInfo("5".getBytes(), valor, 6));
+        packets.add(new DatagramPacketInfo("abcd".getBytes(), valor, 2));
+        packets.add(new DatagramPacketInfo("2".getBytes(), valor, 3));
+        packets.add(new DatagramPacketInfo("3".getBytes(), valor, 4));
+        packets.add(new DatagramPacketInfo("4".getBytes(), valor, 5));
+        packets.add(new DatagramPacketInfo("5".getBytes(), valor, 6));
+        packets.add(new DatagramPacketInfo("abcd".getBytes(), valor, 2));
+        packets.add(new DatagramPacketInfo("2".getBytes(), valor, 3));
+        packets.add(new DatagramPacketInfo("3".getBytes(), valor, 4));
+        packets.add(new DatagramPacketInfo("4".getBytes(), valor, 5));
+        packets.add(new DatagramPacketInfo("5".getBytes(), valor, 6));
+
 
 
         // cria o stream do teclado para ler caminho do arquivo
@@ -101,9 +118,18 @@ public class ClientEnvia {
 
         int listIterator = 0;
 
+        int actualpackageLimit = 1;
+        int packetCalculo = 1;
+        while(packetCalculo != packageLimit) {
+            packetCalculo *=2;
+            actualpackageLimit = actualpackageLimit * 2 + 1;
+        }
+
+        List<String> acksReceived = new ArrayList<String>();
+
         DatagramPacketInfo info;
 
-        while (pacotesParaEnviar <= packageLimit) {
+        while (pacotesParaEnviar <= actualpackageLimit) {
             for (listIterator = listIterator; listIterator < pacotesParaEnviar; listIterator++) {
                 try {
                     info = packets.get(listIterator);
@@ -126,6 +152,8 @@ public class ClientEnvia {
 
                 DatagramPacketResponse response = parseMessage(receivePacket);
 
+                acksReceived.add("recebe response: " + response.getMessage() + ":" + response.getSeq());
+
                 //recebeu o ACK, tudo ok
                 if (response.getMessage() == "ACK" && response.getSeq() == info.getSeq() + 1) {
                     System.out.println("tudo ok");
@@ -137,7 +165,13 @@ public class ClientEnvia {
                 }
             }
 
-            pacotesParaEnviar *= 2;
+            for(int i = 0; i < acksReceived.size(); i++) {
+                System.out.println(acksReceived.get(i));
+            }
+
+            acksReceived = new ArrayList<String>();
+
+            pacotesParaEnviar = pacotesParaEnviar * 2 + 1;
         }
 
         return listIterator;
@@ -145,10 +179,13 @@ public class ClientEnvia {
 
     public static void CongestionAvoidance(List<DatagramPacketInfo> packets, DatagramSocket socket, InetAddress ipAddress, int port, int listIterator) throws IOException {
 
+        System.out.println("Cheguei no CongestionAvoidance");
         byte[] responseData = new byte[1024];
         DatagramPacket receivePacket = new DatagramPacket(responseData, responseData.length, ipAddress, port);
 
         DatagramPacketInfo info;
+
+        List<String> acksReceived = new ArrayList<String>();
 
         int quantPacketSend = 3;
 
@@ -176,6 +213,8 @@ public class ClientEnvia {
                 socket.receive(receivePacket);
 
                 DatagramPacketResponse response = parseMessage(receivePacket);
+
+                acksReceived.add("recebe response: " + response.getMessage() + ":" + response.getSeq());
 
                 //recebeu o ACK, tudo ok
                 if (response.getMessage() == "ACK" && response.getSeq() == info.getSeq() + 1) {
