@@ -5,8 +5,6 @@ import java.net.*;
 import java.util.Arrays;
 
 
-
-
 class ClientRecebe {
     public static void main(String args[]) throws Exception {
         System.out.println("Iniciou");
@@ -20,9 +18,9 @@ class ClientRecebe {
 
         while (true) {
 
-            Thread.sleep(2000);
+            Thread.sleep(500);
 
-            receiveData = new byte[1024];
+            receiveData = new byte[10024];
             testData = new byte[1024];
 
             //Primeiro pacote, só pra dizer
@@ -41,7 +39,9 @@ class ClientRecebe {
 
             DatagramPacket response = new DatagramPacket(testData, testData.length, IPAddress, port);
 
-            response.setData(("ACK-" + packetInfo.getSeq() + 1).getBytes());
+            packetInfo.setSeq(packetInfo.getSeq() + 1);
+
+            response.setData(("ACK-" + packetInfo.getSeq()).getBytes());
 
             serverSocket.send(response);
 

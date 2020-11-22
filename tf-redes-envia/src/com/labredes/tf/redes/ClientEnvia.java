@@ -18,27 +18,23 @@ public class ClientEnvia {
     static final int SLOW_START_MAX_DATA_PACKAGES = 8;
 
     public static void main(String args[]) throws Exception {
+        System.out.println("\n---- Terminal ----\n");
+        System.out.println("Aperte 1 para estabelecer conexão");
+        System.out.println("Aperte 0 para sair");
+
         Scanner in = new Scanner(System.in);
 
-        int input;
-        do {
-            System.out.println("\n---- Terminal ----\n");
-            System.out.println("Aperte 1 para estabelecer conexão");
-            System.out.println("Aperte 0 para sair");
-            input = in.nextInt();
+        int input = in.nextInt();
 
-            switch (input) {
-                case 1: startConection();
-                        break;
-
-                default: break;
-            }
-        }while(input != 0);
-
-        in.close();
-
-
-
+        switch (input) {
+            case 1:
+                startConection();
+                break;
+            case 0:
+                System.exit(0);
+            default:
+                break;
+        }
     }
 
 
@@ -52,54 +48,16 @@ public class ClientEnvia {
 
         int port = 9876;
 
-
         createPackets();
-
-
-
-        //comentado pq ainda n tamo fragmentando arquivo
-//        Path path = Paths.get(filePath);
-//
-//        String data = Files.readAllLines(path).get(0);
-//
-//
-//        //1 caracter = 1 byte, então 300 bytes = 300 caracteres
-//        int endIndex = 300;
-//
-//        //coloca na lista de dados de cada packet o que deve ser enviado, em ordem
-//        for (int startIndex = 0; startIndex < data.length(); startIndex += 300, endIndex += 300) {
-//            packetsData.add(
-//                    data.substring(startIndex, endIndex).getBytes()
-//            );
-//        }
 
         int listIterator = initializeSlowStart(packets, clientSocket, ipAddress, port, SLOW_START_MAX_DATA_PACKAGES);
 
-        CongestionAvoidance(packets, clientSocket, ipAddress, port, listIterator);
-
-        //        DatagramPacketInfo sendData = new DatagramPacketInfo(filePath, "CRC", 1);
-//
-//        String message = Arrays.toString(sendData.getFileData()) + "-" + sendData.getCRC() + "-" + sendData.getSeq();
-//
-//        System.out.println("mensagem pra enviar: " + message);
-//
-//        byte[] packetData = message.getBytes();
-//
-//        DatagramPacket sendPacket = new DatagramPacket(packetData, packetData.length, ipAddress, port);
-//
-//        clientSocket.send(sendPacket);
-//
-//        byte[] receiveData = new byte[1024];
-//        DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
-//
-//        clientSocket.receive(receivePacket);
-//
-//        System.out.println("Chegou mensagem: " + new String(receivePacket.getData()));
-
-        // fecha o cliente
-        //clientSocket.close();
-
-        System.out.println("\nConexão encerrada!");
+        if (listIterator >= packets.size()) {
+            System.out.println("ja enviou tudo, nao precisa do avoidance");
+        } else {
+            congestionAvoidance(packets, clientSocket, ipAddress, port, listIterator);
+            System.out.println("\nConexão encerrada!");
+        }
     }
 
     public static long calculaCRC(byte[] array) {
@@ -121,50 +79,38 @@ public class ClientEnvia {
         System.out.println("\n---- Escolha um arquivo ----\n");
         System.out.println("1 - case 1, 300 bytes");
         System.out.println("2 - case 1, ? bytes");
+
         int input = in.nextInt();
 
-        String filepath = "C:\\Users\\feeel\\Desktop\\TF-LabRedes-Redes\\tf-redes-envia\\input\\case1.txt";
+        String filepath = "C:\\Users\\Felipe\\Desktop\\Trabalho final redes\\TF-LabRedes-Redes\\tf-redes-envia\\input\\case1.txt";
 
         long valor = 1215645;
 
         //16 pacotes
-        packets.add(new DatagramPacketInfo("abcd".getBytes(), valor, 2));
-        packets.add(new DatagramPacketInfo("2".getBytes(), valor, 3));
-        packets.add(new DatagramPacketInfo("3".getBytes(), valor, 4));
-        packets.add(new DatagramPacketInfo("4".getBytes(), valor, 5));
-        packets.add(new DatagramPacketInfo("5".getBytes(), valor, 6));
-        packets.add(new DatagramPacketInfo("abcd".getBytes(), valor, 2));
-        packets.add(new DatagramPacketInfo("2".getBytes(), valor, 3));
-        packets.add(new DatagramPacketInfo("3".getBytes(), valor, 4));
-        packets.add(new DatagramPacketInfo("4".getBytes(), valor, 5));
-        packets.add(new DatagramPacketInfo("5".getBytes(), valor, 6));
-        packets.add(new DatagramPacketInfo("abcd".getBytes(), valor, 2));
-        packets.add(new DatagramPacketInfo("2".getBytes(), valor, 3));
-        packets.add(new DatagramPacketInfo("3".getBytes(), valor, 4));
-        packets.add(new DatagramPacketInfo("4".getBytes(), valor, 5));
-        packets.add(new DatagramPacketInfo("5".getBytes(), valor, 6));
-        packets.add(new DatagramPacketInfo("abcd".getBytes(), valor, 2));
-        packets.add(new DatagramPacketInfo("2".getBytes(), valor, 3));
-        packets.add(new DatagramPacketInfo("3".getBytes(), valor, 4));
-        packets.add(new DatagramPacketInfo("4".getBytes(), valor, 5));
-        packets.add(new DatagramPacketInfo("5".getBytes(), valor, 6));
+        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 1));
+        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 2));
+//        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 3));
+//        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 4));
+//        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 5));
+//        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 6));
+//        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 7));
+//        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 8));
+//        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 9));
+//        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 10));
+//        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 11));
+//        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 12));
 
-        // cria o stream do teclado para ler caminho do arquivo
-        BufferedReader inFromUser = new BufferedReader(new InputStreamReader(System.in));
-
-        System.out.println("Digite o caminho do arquivo");
-        byte[] filePath = inFromUser.readLine().getBytes();
 
         File file = new File(filepath);
-        try (Scanner s = new Scanner(file)){
+        try (Scanner s = new Scanner(file)) {
 
             int numeroSequencia = 0;
-            while(s.hasNext()) {
+            while (s.hasNext()) {
 
                 String conteudoPacote = "";
-                for(int i=0; i < 300; i++) {
+                for (int i = 0; i < 300; i++) {
 
-                    if(s.hasNext()) {
+                    if (s.hasNext()) {
                         conteudoPacote += s.next();
                     }
                 }
@@ -180,7 +126,7 @@ public class ClientEnvia {
                 numeroSequencia++;
 
             }
-        }catch (IOException e){
+        } catch (IOException e) {
             throw new FileNotFoundException("can't find file directory!");
         }
 
@@ -197,8 +143,8 @@ public class ClientEnvia {
 
         int actualpackageLimit = 1;
         int packetCalculo = 1;
-        while(packetCalculo != packageLimit) {
-            packetCalculo *=2;
+        while (packetCalculo != packageLimit) {
+            packetCalculo *= 2;
             actualpackageLimit = actualpackageLimit * 2 + 1;
         }
 
@@ -242,7 +188,7 @@ public class ClientEnvia {
                 }
             }
 
-            for(int i = 0; i < acksReceived.size(); i++) {
+            for (int i = 0; i < acksReceived.size(); i++) {
                 System.out.println(acksReceived.get(i));
             }
 
@@ -254,7 +200,7 @@ public class ClientEnvia {
         return listIterator;
     }
 
-    public static void CongestionAvoidance(List<DatagramPacketInfo> packets, DatagramSocket socket, InetAddress ipAddress, int port, int listIterator) throws IOException {
+    public static void congestionAvoidance(List<DatagramPacketInfo> packets, DatagramSocket socket, InetAddress ipAddress, int port, int listIterator) throws IOException {
 
         System.out.println("Cheguei no CongestionAvoidance");
         byte[] responseData = new byte[1024];
@@ -266,7 +212,7 @@ public class ClientEnvia {
 
         int quantPacketSend = 3;
 
-        while(packets.size() != listIterator) {
+        while (packets.size() != listIterator) {
 
             for (int i = 0; i < quantPacketSend; i++) {
 
