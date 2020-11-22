@@ -5,6 +5,9 @@ import java.io.*;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -100,36 +103,24 @@ public class ClientEnvia {
 //        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 11));
 //        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 12));
 
+        Path path = Paths.get(filepath);
 
-        File file = new File(filepath);
-        try (Scanner s = new Scanner(file)) {
+        List<String> data = Files.readAllLines(path);
 
-            int numeroSequencia = 0;
-            while (s.hasNext()) {
+        int numeroSequencia = 0;
 
-                String conteudoPacote = "";
-                for (int i = 0; i < 300; i++) {
+        //coloca na lista de dados de cada packet o que deve ser enviado, em ordem
+        for (int i = 0; i < data.size(); i++) {
+            byte[] arrayBytes = data.get(i).getBytes();
 
-                    if (s.hasNext()) {
-                        conteudoPacote += s.next();
-                    }
-                }
+            long crc = calculaCRC(arrayBytes);
 
-                byte[] arrayBytes = conteudoPacote.getBytes();
+            packets.add(new DatagramPacketInfo(arrayBytes, crc, numeroSequencia));
 
-                //System.out.println("tamanho do array: " + arrayBytes.length);
+            numeroSequencia++;
 
-                long crc = calculaCRC(arrayBytes);
-
-                packets.add(new DatagramPacketInfo(arrayBytes, crc, numeroSequencia));
-
-                numeroSequencia++;
-
-            }
-        } catch (IOException e) {
-            throw new FileNotFoundException("can't find file directory!");
         }
-
+        
         in.close();
     }
 
