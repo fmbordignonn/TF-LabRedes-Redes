@@ -210,7 +210,7 @@ public class ClientEnvia {
 
                 pacotesParaEnviar = pacotesParaEnviar * 2 + 1;
             }
-        }catch(SocketTimeoutException ex){
+        } catch (SocketTimeoutException ex) {
             for (int i = 0; i < acksReceived.size(); i++) {
                 System.out.println(acksReceived.get(i));
             }
@@ -239,56 +239,62 @@ public class ClientEnvia {
 
         int quantPacketSend = 3;
 
-        try{
-        while (packets.size() != listIterator) {
+        try {
+            while (packets.size() != listIterator) {
 
-            for (int i = 0; i < quantPacketSend; i++) {
+                for (int i = 0; i < quantPacketSend; i++) {
 
-                try {
-                    info = packets.get(listIterator);
-                } catch (Exception ex) {
-                    //acabou de iterar, enviou tudo
-                    break;
+                    try {
+                        info = packets.get(listIterator);
+                    } catch (Exception ex) {
+                        //acabou de iterar, enviou tudo
+                        break;
+                    }
+
+                    String message = Arrays.toString(info.getFileData()) + "-" + info.getCRC() + "-" + info.getSeq();
+
+                    System.out.println("enviando mensagem: " + message);
+
+                    byte[] packetData = message.getBytes();
+
+                    DatagramPacket sendPacket = new DatagramPacket(packetData, packetData.length, ipAddress, port);
+
+                    socket.send(sendPacket);
+
+                    socket.receive(receivePacket);
+
+                    DatagramPacketResponse response = parseMessage(receivePacket);
+
+                    acksReceived.add("recebe response: " + response.getMessage() + ":" + response.getSeq());
+
+                    //recebeu o ACK, tudo ok
+                    if (response.getMessage() == "ACK" && response.getSeq() == info.getSeq() + 1) {
+                        System.out.println("tudo ok");
+                    }
+
+                    //ACK duplicado, deu pau..
+                    if (response.getSeq() == info.getSeq()) {
+                        System.out.println("recebeu um ack duplicado");
+                    }
+
+                    listIterator++;
                 }
 
-                String message = Arrays.toString(info.getFileData()) + "-" + info.getCRC() + "-" + info.getSeq();
-
-                System.out.println("enviando mensagem: " + message);
-
-                byte[] packetData = message.getBytes();
-
-                DatagramPacket sendPacket = new DatagramPacket(packetData, packetData.length, ipAddress, port);
-
-                socket.send(sendPacket);
-
-                socket.receive(receivePacket);
-
-                DatagramPacketResponse response = parseMessage(receivePacket);
-
-                acksReceived.add("recebe response: " + response.getMessage() + ":" + response.getSeq());
-
-                //recebeu o ACK, tudo ok
-                if (response.getMessage() == "ACK" && response.getSeq() == info.getSeq() + 1) {
-                    System.out.println("tudo ok");
-                }
-
-                //ACK duplicado, deu pau..
-                if (response.getSeq() == info.getSeq()) {
-                    System.out.println("recebeu um ack duplicado");
-                }
-
-                listIterator++;
+                quantPacketSend++;
             }
-
-            quantPacketSend++;
-        }
-    }catch(SocketTimeoutException ex){
-            congestionAvoidance(packets, socket, ipAddress, port, listIterator);
 
             for (int i = 0; i < acksReceived.size(); i++) {
                 System.out.println(acksReceived.get(i));
             }
 
+            acksReceived = new ArrayList<String>();
+
+        } catch (SocketTimeoutException ex) {
+            congestionAvoidance(packets, socket, ipAddress, port, listIterator);
+
+            for (int i = 0; i < acksReceived.size(); i++) {
+                System.out.println(acksReceived.get(i));
+            }
 
 
             acksReceived = new ArrayList<String>();
@@ -297,7 +303,8 @@ public class ClientEnvia {
             System.out.println("Reenviando pacote...");
 
             listIterator = 0;
-            initializeSlowStart(socket, ipAddress, port, listIterator);
+            //ta dando pau
+            //initializeSlowStart(socket, ipAddress, port, listIterator);
 
         }
     }
