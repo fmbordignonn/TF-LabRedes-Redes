@@ -37,6 +37,13 @@ class ClientRecebe {
 
             DatagramPacketInfo packetInfo = parseMessage(receivedMessage);
 
+            //retirando delimiter da msg no client q envia o file (variavel FILE_END_DELIMITER_CHAR)
+            for (int i = 0; i < packetInfo.getFileData().length; i++) {
+                if(packetInfo.getFileData()[i] == 124){
+                    packetInfo.getFileData()[i] = 0;
+                }
+            }
+
             DatagramPacket response = new DatagramPacket(testData, testData.length, IPAddress, port);
 
             packetInfo.setSeq(packetInfo.getSeq() + 1);

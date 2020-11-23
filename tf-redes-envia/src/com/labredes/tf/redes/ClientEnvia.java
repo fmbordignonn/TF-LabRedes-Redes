@@ -19,6 +19,7 @@ public class ClientEnvia {
     static List<DatagramPacketInfo> packets = new ArrayList<>();
 
     static final int SLOW_START_MAX_DATA_PACKAGES = 8;
+    static final char FILE_END_DELIMITER_CHAR = '|';
 
     public static void main(String args[]) throws Exception {
         System.out.println("\n---- Terminal ----\n");
@@ -111,7 +112,27 @@ public class ClientEnvia {
 
         //coloca na lista de dados de cada packet o que deve ser enviado, em ordem
         for (int i = 0; i < data.size(); i++) {
-            byte[] arrayBytes = data.get(i).getBytes();
+
+            String content = data.get(i);
+            final int MAX_BYTES = 300;
+
+            if (content.toCharArray().length < MAX_BYTES) {
+                char[] contentBytes = new char[MAX_BYTES];
+                char[] contentChars = content.toCharArray();
+
+                for (int j = 0; j < contentChars.length; j++) {
+                    contentBytes[j] = contentChars[j];
+                }
+
+                for (int j = contentChars.length; j < MAX_BYTES; j++) {
+                    contentBytes[j] = FILE_END_DELIMITER_CHAR;
+                }
+
+                content = new String(contentBytes);
+
+            }
+
+            byte[] arrayBytes = content.getBytes();
 
             long crc = calculaCRC(arrayBytes);
 
@@ -120,7 +141,7 @@ public class ClientEnvia {
             numeroSequencia++;
 
         }
-        
+
         in.close();
     }
 
