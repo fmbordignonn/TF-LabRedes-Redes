@@ -12,13 +12,14 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Scanner;
+import java.util.stream.Collectors;
 import java.util.zip.CRC32;
 
 public class ClientEnvia {
 
     static List<DatagramPacketInfo> packets = new ArrayList<>();
 
-    static final int SLOW_START_MAX_DATA_PACKAGES = 8;
+    static final int SLOW_START_MAX_DATA_PACKAGES = 2;
     static final char FILE_END_DELIMITER_CHAR = '|';
 
     public static void main(String args[]) throws Exception {
@@ -32,7 +33,7 @@ public class ClientEnvia {
 
         switch (input) {
             case 1:
-                startConection();
+                startConnection();
                 break;
             case 0:
                 System.exit(0);
@@ -42,7 +43,7 @@ public class ClientEnvia {
     }
 
 
-    public static void startConection() throws Exception {
+    public static void startConnection() throws Exception {
         //estabelecendo que esse socket roda na porta 6789
         DatagramSocket clientSocket = new DatagramSocket(6789);
 
@@ -93,16 +94,16 @@ public class ClientEnvia {
         //16 pacotes
         packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 1));
         packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 2));
-//        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 3));
-//        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 4));
-//        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 5));
-//        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 6));
-//        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 7));
-//        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 8));
-//        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 9));
-//        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 10));
-//        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 11));
-//        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 12));
+        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 3));
+        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 4));
+        //packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 5));
+        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 6));
+        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 7));
+        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 8));
+        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 9));
+        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 10));
+        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 11));
+        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 12));
 
         Path path = Paths.get(filepath);
 
@@ -188,18 +189,10 @@ public class ClientEnvia {
                 DatagramPacketResponse response = parseMessage(receivePacket);
 
                 acksReceived.add("recebe response: " + response.getMessage() + ":" + response.getSeq());
-
-                //recebeu o ACK, tudo ok
-                if (response.getMessage() == "ACK" && response.getSeq() == info.getSeq() + 1) {
-                    System.out.println("tudo ok");
-                }
-
-                //ACK duplicado, deu pau..
-                if (response.getSeq() == info.getSeq()) {
-                    System.out.println("recebeu um ack duplicado");
-                }
             }
 
+            //validar os ACKs
+            //se der pau no slow start, falha tudo?
             for (int i = 0; i < acksReceived.size(); i++) {
                 System.out.println(acksReceived.get(i));
             }
@@ -221,8 +214,9 @@ public class ClientEnvia {
         DatagramPacketInfo info;
 
         List<String> acksReceived = new ArrayList<String>();
+        List<Integer> acksRepetidos = new ArrayList<Integer>();
 
-        int quantPacketSend = 3;
+        int quantPacketSend = SLOW_START_MAX_DATA_PACKAGES + 1;
 
         while (packets.size() != listIterator) {
 
@@ -251,18 +245,35 @@ public class ClientEnvia {
 
                 acksReceived.add("recebe response: " + response.getMessage() + ":" + response.getSeq());
 
-                //recebeu o ACK, tudo ok
-                if (response.getMessage() == "ACK" && response.getSeq() == info.getSeq() + 1) {
-                    System.out.println("tudo ok");
+                //ACK repetido
+                if (info.getSeq() != response.getSeq() - 1) {
+                    acksRepetidos.add(response.getSeq());
                 }
 
-                //ACK duplicado, deu pau..
-                if (response.getSeq() == info.getSeq()) {
-                    System.out.println("recebeu um ack duplicado");
+                if (acksRepetidos.size() >= 3) {
+                    //pega o pacote que falhou
+                    DatagramPacketInfo failedPacket = packets.stream()
+                            .filter(x -> x.getSeq() == acksRepetidos.stream().findFirst().get())
+                            .findFirst().get();
+
+                    //testar se o indexOf usa o .equals da classe
+                    int packetIndex = packets.indexOf(failedPacket);
+
+                    listIterator = packetIndex;
+
+                    continue;
                 }
 
                 listIterator++;
             }
+
+            for (int i = 0; i < acksReceived.size(); i++) {
+                System.out.println(acksReceived.get(i));
+            }
+
+            acksReceived = new ArrayList<String>();
+
+            acksRepetidos.clear();
 
             quantPacketSend++;
         }

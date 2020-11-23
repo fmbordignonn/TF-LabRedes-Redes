@@ -12,16 +12,18 @@ class ClientRecebe {
         //estabelecendo que esse socket roda na porta 9876
         DatagramSocket serverSocket = new DatagramSocket(9876);
 
+        int lastSeqReceived = -1;
+
         byte[] receiveData;
 
-        byte[] testData;
+        byte[] sendData;
 
         while (true) {
 
             Thread.sleep(500);
 
             receiveData = new byte[10024];
-            testData = new byte[1024];
+            sendData = new byte[1024];
 
             //Primeiro pacote, só pra dizer
             DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
@@ -37,6 +39,23 @@ class ClientRecebe {
 
             DatagramPacketInfo packetInfo = parseMessage(receivedMessage);
 
+            //validaçao pra -1 pq é o valor inicial da variavel
+            //se o valor da ultima sequencia recebida for diferente da seq do pacote recebido agora -1, significa que faltou algum pacote
+            //no caminho
+
+            //isso é o "fast retransmit"
+            if(lastSeqReceived != packetInfo.getSeq() - 1 && lastSeqReceived != -1){
+                DatagramPacket response = new DatagramPacket(sendData, sendData.length, IPAddress, port);
+
+                response.setData(("ACK-" + lastSeqReceived).getBytes());
+
+                serverSocket.send(response);
+
+                continue;
+            }
+
+            lastSeqReceived = packetInfo.getSeq();
+
             //retirando delimiter da msg no client q envia o file (variavel FILE_END_DELIMITER_CHAR)
             for (int i = 0; i < packetInfo.getFileData().length; i++) {
                 if(packetInfo.getFileData()[i] == 124){
@@ -44,9 +63,9 @@ class ClientRecebe {
                 }
             }
 
-            DatagramPacket response = new DatagramPacket(testData, testData.length, IPAddress, port);
-
             packetInfo.setSeq(packetInfo.getSeq() + 1);
+
+            DatagramPacket response = new DatagramPacket(sendData, sendData.length, IPAddress, port);
 
             response.setData(("ACK-" + packetInfo.getSeq()).getBytes());
 
