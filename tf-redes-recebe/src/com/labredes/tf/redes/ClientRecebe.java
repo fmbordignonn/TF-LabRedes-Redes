@@ -10,7 +10,7 @@ class ClientRecebe {
         System.out.println("Iniciou");
 
         //estabelecendo que esse socket roda na porta 9876
-        DatagramSocket serverSocket = new DatagramSocket(9876);
+        DatagramSocket serverSocket = new DatagramSocket(8080);
 
         byte[] receiveData;
 
