@@ -65,6 +65,169 @@ public class ClientEnvia {
         }
     }
 
+
+    public static int initializeSlowStart(DatagramSocket socket, int packageLimit) throws Exception {
+        int pacotesParaEnviar = 1;
+
+        byte[] responseData = new byte[1024];
+        DatagramPacket receivePacket = new DatagramPacket(responseData, responseData.length, ipAddress, RECEIVER_PORT);
+
+        int listIterator = 0;
+
+        int actualpackageLimit = 1;
+        int packetCalculo = 1;
+        while (packetCalculo != packageLimit) {
+            packetCalculo *= 2;
+            actualpackageLimit = actualpackageLimit * 2 + 1;
+        }
+
+        List<String> acksReceived = new ArrayList<String>();
+
+        DatagramPacketInfo info;
+
+        try {
+            while (pacotesParaEnviar <= actualpackageLimit) {
+                for (listIterator = listIterator; listIterator < pacotesParaEnviar; listIterator++) {
+                    try {
+                        info = packets.get(listIterator);
+                    } catch (Exception ex) {
+                        //acabou de iterar, enviou tudo
+                        break;
+                    }
+
+                    DatagramPacketResponse response = sendPacket(info, socket);
+
+                    acksReceived.add("recebe response: " + response.getMessage() + ":" + response.getSeq());
+
+                    if(response.getSeq() == info.getSeq()){
+                        System.out.println("ack duplicado recebido");
+                    }
+                }
+
+                for (int i = 0; i < acksReceived.size(); i++) {
+                    System.out.println(acksReceived.get(i));
+                }
+
+                acksReceived = new ArrayList<String>();
+
+                pacotesParaEnviar = pacotesParaEnviar * 2 + 1;
+            }
+        } catch (SocketTimeoutException ex) {
+            for (int i = 0; i < acksReceived.size(); i++) {
+                System.out.println(acksReceived.get(i));
+            }
+
+            acksReceived = new ArrayList<String>();
+
+            System.out.println("Timeout");
+            System.out.println("Reenviando pacote...");
+
+            //listIterator = 0;
+            initializeSlowStart(socket, SLOW_START_MAX_DATA_PACKAGES);
+
+        }
+        return listIterator;
+    }
+
+    public static void congestionAvoidance(DatagramSocket socket,  int listIterator) throws Exception {
+
+        System.out.println("Cheguei no CongestionAvoidance");
+        byte[] responseData = new byte[1024];
+        DatagramPacket receivePacket = new DatagramPacket(responseData, responseData.length, ipAddress, RECEIVER_PORT);
+
+        DatagramPacketInfo info;
+
+        List<String> acksReceived = new ArrayList<String>();
+
+        int quantPacketSend = 3;
+
+        try {
+            while (packets.size() != listIterator) {
+
+                for (int i = 0; i < quantPacketSend; i++) {
+
+                    try {
+                        info = packets.get(listIterator);
+                    } catch (Exception ex) {
+                        //acabou de iterar, enviou tudo
+                        break;
+                    }
+
+                    DatagramPacketResponse response = sendPacket(info, socket);
+
+                    acksReceived.add("recebe response: " + response.getMessage() + ":" + response.getSeq());
+
+                    //recebeu o ACK, tudo ok
+                    if (response.getMessage() == "ACK" && response.getSeq() == info.getSeq() + 1) {
+                        System.out.println("tudo ok");
+                    }
+
+                    //ACK duplicado, deu pau..
+                    if (response.getSeq() == info.getSeq()) {
+                        System.out.println("recebeu um ack duplicado");
+                    }
+
+                    listIterator++;
+                }
+
+                quantPacketSend++;
+            }
+
+            for (int i = 0; i < acksReceived.size(); i++) {
+                System.out.println(acksReceived.get(i));
+            }
+
+            acksReceived = new ArrayList<String>();
+
+        } catch (SocketTimeoutException ex) {
+            congestionAvoidance(socket, listIterator);
+
+            for (int i = 0; i < acksReceived.size(); i++) {
+                System.out.println(acksReceived.get(i));
+            }
+
+
+            acksReceived = new ArrayList<String>();
+
+            System.out.println("Timeout");
+            System.out.println("Reenviando pacote...");
+
+            listIterator = 0;
+            //ta dando pau
+            initializeSlowStart(socket, listIterator);
+
+        }
+    }
+
+    public static DatagramPacketResponse parseMessage(DatagramPacket message) {
+        String[] split = new String(message.getData()).split("-");
+
+        return new DatagramPacketResponse(split[0], Integer.parseInt(split[1].trim()));
+    }
+
+    public static DatagramPacketResponse sendPacket(DatagramPacketInfo packet, DatagramSocket socket) throws Exception{
+        byte[] responseData = new byte[1024];
+        DatagramPacket receivePacket = new DatagramPacket(responseData, responseData.length, ipAddress, RECEIVER_PORT);
+
+        String message = Arrays.toString(packet.getFileData()) + "-" + packet.getCRC() + "-" + packet.getSeq();
+
+        System.out.println("enviando mensagem: " + message);
+
+        byte[] packetData = message.getBytes();
+
+        DatagramPacket sendPacket = new DatagramPacket(packetData, packetData.length, ipAddress, RECEIVER_PORT);
+
+        socket.send(sendPacket);
+
+        socket.receive(receivePacket);
+
+        DatagramPacketResponse response = parseMessage(receivePacket);
+
+        //System.out.println("recebe response: " + response.getMessage() + ":" + response.getSeq());
+
+        return response;
+    }
+
     public static long calculaCRC(byte[] array) {
         CRC32 crc = new CRC32();
 
@@ -144,189 +307,5 @@ public class ClientEnvia {
         }
 
         in.close();
-    }
-
-    public static int initializeSlowStart(DatagramSocket socket, int packageLimit) throws Exception {
-        int pacotesParaEnviar = 1;
-
-        byte[] responseData = new byte[1024];
-        DatagramPacket receivePacket = new DatagramPacket(responseData, responseData.length, ipAddress, RECEIVER_PORT);
-
-        int listIterator = 0;
-
-        int actualpackageLimit = 1;
-        int packetCalculo = 1;
-        while (packetCalculo != packageLimit) {
-            packetCalculo *= 2;
-            actualpackageLimit = actualpackageLimit * 2 + 1;
-        }
-
-        List<String> acksReceived = new ArrayList<String>();
-
-        DatagramPacketInfo info;
-
-        try {
-            while (pacotesParaEnviar <= actualpackageLimit) {
-                for (listIterator = listIterator; listIterator < pacotesParaEnviar; listIterator++) {
-                    try {
-                        info = packets.get(listIterator);
-                    } catch (Exception ex) {
-                        //acabou de iterar, enviou tudo
-                        break;
-                    }
-
-                    String message = Arrays.toString(info.getFileData()) + "-" + info.getCRC() + "-" + info.getSeq();
-
-                    System.out.println("enviando mensagem: " + message);
-
-                    byte[] packetData = message.getBytes();
-
-                    DatagramPacket sendPacket = new DatagramPacket(packetData, packetData.length, ipAddress, RECEIVER_PORT);
-
-                    socket.send(sendPacket);
-
-                    socket.receive(receivePacket);
-
-                    DatagramPacketResponse response = parseMessage(receivePacket);
-
-                    acksReceived.add("recebe response: " + response.getMessage() + ":" + response.getSeq());
-
-                    if(response.getSeq() == info.getSeq()){
-                        System.out.println("ack duplicado recebido");
-                    }
-                }
-
-                for (int i = 0; i < acksReceived.size(); i++) {
-                    System.out.println(acksReceived.get(i));
-                }
-
-                acksReceived = new ArrayList<String>();
-
-                pacotesParaEnviar = pacotesParaEnviar * 2 + 1;
-            }
-        } catch (SocketTimeoutException ex) {
-            for (int i = 0; i < acksReceived.size(); i++) {
-                System.out.println(acksReceived.get(i));
-            }
-
-            acksReceived = new ArrayList<String>();
-
-            System.out.println("Timeout");
-            System.out.println("Reenviando pacote...");
-
-            //listIterator = 0;
-            initializeSlowStart(socket, SLOW_START_MAX_DATA_PACKAGES);
-
-        }
-        return listIterator;
-    }
-
-    public static void congestionAvoidance(DatagramSocket socket,  int listIterator) throws Exception {
-
-        System.out.println("Cheguei no CongestionAvoidance");
-        byte[] responseData = new byte[1024];
-        DatagramPacket receivePacket = new DatagramPacket(responseData, responseData.length, ipAddress, RECEIVER_PORT);
-
-        DatagramPacketInfo info;
-
-        List<String> acksReceived = new ArrayList<String>();
-
-        int quantPacketSend = 3;
-
-        try {
-            while (packets.size() != listIterator) {
-
-                for (int i = 0; i < quantPacketSend; i++) {
-
-                    try {
-                        info = packets.get(listIterator);
-                    } catch (Exception ex) {
-                        //acabou de iterar, enviou tudo
-                        break;
-                    }
-
-                    String message = Arrays.toString(info.getFileData()) + "-" + info.getCRC() + "-" + info.getSeq();
-
-                    System.out.println("enviando mensagem: " + message);
-
-                    byte[] packetData = message.getBytes();
-
-                    DatagramPacket sendPacket = new DatagramPacket(packetData, packetData.length, ipAddress, RECEIVER_PORT);
-
-                    socket.send(sendPacket);
-
-                    socket.receive(receivePacket);
-
-                    DatagramPacketResponse response = parseMessage(receivePacket);
-
-                    acksReceived.add("recebe response: " + response.getMessage() + ":" + response.getSeq());
-
-                    //recebeu o ACK, tudo ok
-                    if (response.getMessage() == "ACK" && response.getSeq() == info.getSeq() + 1) {
-                        System.out.println("tudo ok");
-                    }
-
-                    //ACK duplicado, deu pau..
-                    if (response.getSeq() == info.getSeq()) {
-                        System.out.println("recebeu um ack duplicado");
-                    }
-
-                    listIterator++;
-                }
-
-                quantPacketSend++;
-            }
-
-            for (int i = 0; i < acksReceived.size(); i++) {
-                System.out.println(acksReceived.get(i));
-            }
-
-            acksReceived = new ArrayList<String>();
-
-        } catch (SocketTimeoutException ex) {
-            congestionAvoidance(socket, listIterator);
-
-            for (int i = 0; i < acksReceived.size(); i++) {
-                System.out.println(acksReceived.get(i));
-            }
-
-
-            acksReceived = new ArrayList<String>();
-
-            System.out.println("Timeout");
-            System.out.println("Reenviando pacote...");
-
-            listIterator = 0;
-            //ta dando pau
-            initializeSlowStart(socket, listIterator);
-
-        }
-    }
-
-    public static DatagramPacketResponse parseMessage(DatagramPacket message) {
-        String[] split = new String(message.getData()).split("-");
-
-        return new DatagramPacketResponse(split[0], Integer.parseInt(split[1].trim()));
-    }
-
-    public static DatagramPacketResponse sendPacket(DatagramPacketInfo packet, DatagramSocket socket) throws Exception{
-        byte[] responseData = new byte[1024];
-        DatagramPacket receivePacket = new DatagramPacket(responseData, responseData.length, ipAddress, RECEIVER_PORT);
-
-        String message = Arrays.toString(packet.getFileData()) + "-" + packet.getCRC() + "-" + packet.getSeq();
-
-        System.out.println("enviando mensagem: " + message);
-
-        byte[] packetData = message.getBytes();
-
-        DatagramPacket sendPacket = new DatagramPacket(packetData, packetData.length, ipAddress, RECEIVER_PORT);
-
-        socket.send(sendPacket);
-
-        socket.receive(receivePacket);
-
-        DatagramPacketResponse response = parseMessage(receivePacket);
-
-        return null;
     }
 }

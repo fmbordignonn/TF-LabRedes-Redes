@@ -25,7 +25,6 @@ class ClientRecebe {
             receiveData = new byte[10024];
             sendData = new byte[1024];
 
-            //Primeiro pacote, só pra dizer
             DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
             serverSocket.receive(receivePacket);
 
