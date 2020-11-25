@@ -49,7 +49,6 @@ class ClientRecebe {
                 response.setData(("ACK-" + lastSeqReceived).getBytes());
 
                 serverSocket.send(response);
-
                 continue;
             }
 

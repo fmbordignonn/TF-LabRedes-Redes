@@ -19,7 +19,7 @@ public class ClientEnvia {
 
     static List<DatagramPacketInfo> packets = new ArrayList<>();
 
-    static final int SLOW_START_MAX_DATA_PACKAGES = 8;
+    static final int SLOW_START_MAX_DATA_PACKAGES = 4;
     static final char FILE_END_DELIMITER_CHAR = '|';
     static InetAddress ipAddress = null;
     static final int RECEIVER_PORT = 9876;
@@ -69,16 +69,13 @@ public class ClientEnvia {
     public static int initializeSlowStart(DatagramSocket socket, int packageLimit) throws Exception {
         int pacotesParaEnviar = 1;
 
-        byte[] responseData = new byte[1024];
-        DatagramPacket receivePacket = new DatagramPacket(responseData, responseData.length, ipAddress, RECEIVER_PORT);
-
         int listIterator = 0;
 
-        int actualpackageLimit = 1;
+        int actualPackageLimit = 1;
         int packetCalculo = 1;
         while (packetCalculo != packageLimit) {
             packetCalculo *= 2;
-            actualpackageLimit = actualpackageLimit * 2 + 1;
+            actualPackageLimit = actualPackageLimit * 2 + 1;
         }
 
         List<String> acksReceived = new ArrayList<String>();
@@ -86,7 +83,7 @@ public class ClientEnvia {
         DatagramPacketInfo info;
 
         try {
-            while (pacotesParaEnviar <= actualpackageLimit) {
+            while (pacotesParaEnviar <= actualPackageLimit) {
                 for (listIterator = listIterator; listIterator < pacotesParaEnviar; listIterator++) {
                     try {
                         info = packets.get(listIterator);
@@ -99,8 +96,10 @@ public class ClientEnvia {
 
                     acksReceived.add("recebe response: " + response.getMessage() + ":" + response.getSeq());
 
-                    if(response.getSeq() == info.getSeq()){
+                    if (response.getSeq() != info.getSeq() + 1) {
                         System.out.println("ack duplicado recebido");
+                        System.out.println("DEU ACK DUPLICADO NO SLOW START, ENCERRANDO APP (TEMPORARIO)");
+                        System.exit(0);
                     }
                 }
 
@@ -129,16 +128,15 @@ public class ClientEnvia {
         return listIterator;
     }
 
-    public static void congestionAvoidance(DatagramSocket socket,  int listIterator) throws Exception {
-
-        System.out.println("Cheguei no CongestionAvoidance");
-        byte[] responseData = new byte[1024];
-        DatagramPacket receivePacket = new DatagramPacket(responseData, responseData.length, ipAddress, RECEIVER_PORT);
+    public static void congestionAvoidance(DatagramSocket socket, int listIterator) throws Exception {
+        System.out.println("Cheguei no congestionAvoidance");
 
         DatagramPacketInfo info;
 
         List<String> acksReceived = new ArrayList<String>();
+        List<Integer> acksDuplicados = new ArrayList<>();
 
+        //trocar por slow start max packages?
         int quantPacketSend = 3;
 
         try {
@@ -157,14 +155,14 @@ public class ClientEnvia {
 
                     acksReceived.add("recebe response: " + response.getMessage() + ":" + response.getSeq());
 
-                    //recebeu o ACK, tudo ok
-                    if (response.getMessage() == "ACK" && response.getSeq() == info.getSeq() + 1) {
-                        System.out.println("tudo ok");
+                    //ACK duplicado, deu pau..
+                    if (response.getSeq() != info.getSeq() + 1) {
+                        System.out.println("recebeu um ack duplicado");
+                        acksDuplicados.add(response.getSeq());
                     }
 
-                    //ACK duplicado, deu pau..
-                    if (response.getSeq() == info.getSeq()) {
-                        System.out.println("recebeu um ack duplicado");
+                    if (acksDuplicados.size() >= 3) {
+                        System.out.println("EXECUTAR FAST RETRANSMIT DO PACOTE COM ESSA SEQ: " + acksDuplicados.stream().findFirst());
                     }
 
                     listIterator++;
@@ -205,7 +203,7 @@ public class ClientEnvia {
         return new DatagramPacketResponse(split[0], Integer.parseInt(split[1].trim()));
     }
 
-    public static DatagramPacketResponse sendPacket(DatagramPacketInfo packet, DatagramSocket socket) throws Exception{
+    public static DatagramPacketResponse sendPacket(DatagramPacketInfo packet, DatagramSocket socket) throws Exception {
         byte[] responseData = new byte[1024];
         DatagramPacket receivePacket = new DatagramPacket(responseData, responseData.length, ipAddress, RECEIVER_PORT);
 
@@ -259,10 +257,10 @@ public class ClientEnvia {
         packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 2));
         packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 3));
         packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 4));
-        //packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 5));
+        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 5));
         packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 6));
         packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 7));
-        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 8));
+        //packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 8));
         packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 9));
         packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 10));
         packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 11));
