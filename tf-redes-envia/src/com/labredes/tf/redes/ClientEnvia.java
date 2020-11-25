@@ -21,6 +21,8 @@ public class ClientEnvia {
 
     static final int SLOW_START_MAX_DATA_PACKAGES = 8;
     static final char FILE_END_DELIMITER_CHAR = '|';
+    static InetAddress ipAddress = null;
+    static final int RECEIVER_PORT = 9876;
 
     public static void main(String args[]) throws Exception {
         System.out.println("\n---- Terminal ----\n");
@@ -47,20 +49,18 @@ public class ClientEnvia {
         //estabelecendo que esse socket roda na porta 6789
         DatagramSocket clientSocket = new DatagramSocket(6789);
 
-        InetAddress ipAddress = InetAddress.getByName("localhost");
+        ipAddress = InetAddress.getByName("localhost");
 
         System.out.println("\nConexão estabelecida!");
 
-        int port = 9876;
-
         createPackets();
 
-        int listIterator = initializeSlowStart(packets, clientSocket, ipAddress, port, SLOW_START_MAX_DATA_PACKAGES);
+        int listIterator = initializeSlowStart(clientSocket, SLOW_START_MAX_DATA_PACKAGES);
 
         if (listIterator >= packets.size()) {
             System.out.println("ja enviou tudo, nao precisa do avoidance");
         } else {
-            congestionAvoidance(packets, clientSocket, ipAddress, port, listIterator);
+            congestionAvoidance(clientSocket, listIterator);
             System.out.println("\nConexão encerrada!");
         }
     }
@@ -146,11 +146,11 @@ public class ClientEnvia {
         in.close();
     }
 
-    public static int initializeSlowStart(List<DatagramPacketInfo> packets, DatagramSocket socket, InetAddress ipAddress, int port, int packageLimit) throws Exception {
+    public static int initializeSlowStart(DatagramSocket socket, int packageLimit) throws Exception {
         int pacotesParaEnviar = 1;
 
         byte[] responseData = new byte[1024];
-        DatagramPacket receivePacket = new DatagramPacket(responseData, responseData.length, ipAddress, port);
+        DatagramPacket receivePacket = new DatagramPacket(responseData, responseData.length, ipAddress, RECEIVER_PORT);
 
         int listIterator = 0;
 
@@ -181,7 +181,7 @@ public class ClientEnvia {
 
                     byte[] packetData = message.getBytes();
 
-                    DatagramPacket sendPacket = new DatagramPacket(packetData, packetData.length, ipAddress, port);
+                    DatagramPacket sendPacket = new DatagramPacket(packetData, packetData.length, ipAddress, RECEIVER_PORT);
 
                     socket.send(sendPacket);
 
@@ -191,14 +191,8 @@ public class ClientEnvia {
 
                     acksReceived.add("recebe response: " + response.getMessage() + ":" + response.getSeq());
 
-                    //recebeu o ACK, tudo ok
-                    if (response.getMessage() == "ACK" && response.getSeq() == info.getSeq() + 1) {
-                        System.out.println("tudo ok");
-                    }
-
-                    //ACK duplicado, deu pau..
-                    if (response.getSeq() == info.getSeq()) {
-                        System.out.println("recebeu um ack duplicado");
+                    if(response.getSeq() == info.getSeq()){
+                        System.out.println("ack duplicado recebido");
                     }
                 }
 
@@ -221,17 +215,17 @@ public class ClientEnvia {
             System.out.println("Reenviando pacote...");
 
             //listIterator = 0;
-            initializeSlowStart(packets, socket, ipAddress, port, SLOW_START_MAX_DATA_PACKAGES);
+            initializeSlowStart(socket, SLOW_START_MAX_DATA_PACKAGES);
 
         }
         return listIterator;
     }
 
-    public static void congestionAvoidance(List<DatagramPacketInfo> packets, DatagramSocket socket, InetAddress ipAddress, int port, int listIterator) throws IOException {
+    public static void congestionAvoidance(DatagramSocket socket,  int listIterator) throws Exception {
 
         System.out.println("Cheguei no CongestionAvoidance");
         byte[] responseData = new byte[1024];
-        DatagramPacket receivePacket = new DatagramPacket(responseData, responseData.length, ipAddress, port);
+        DatagramPacket receivePacket = new DatagramPacket(responseData, responseData.length, ipAddress, RECEIVER_PORT);
 
         DatagramPacketInfo info;
 
@@ -257,7 +251,7 @@ public class ClientEnvia {
 
                     byte[] packetData = message.getBytes();
 
-                    DatagramPacket sendPacket = new DatagramPacket(packetData, packetData.length, ipAddress, port);
+                    DatagramPacket sendPacket = new DatagramPacket(packetData, packetData.length, ipAddress, RECEIVER_PORT);
 
                     socket.send(sendPacket);
 
@@ -290,7 +284,7 @@ public class ClientEnvia {
             acksReceived = new ArrayList<String>();
 
         } catch (SocketTimeoutException ex) {
-            congestionAvoidance(packets, socket, ipAddress, port, listIterator);
+            congestionAvoidance(socket, listIterator);
 
             for (int i = 0; i < acksReceived.size(); i++) {
                 System.out.println(acksReceived.get(i));
@@ -304,7 +298,7 @@ public class ClientEnvia {
 
             listIterator = 0;
             //ta dando pau
-            //initializeSlowStart(socket, ipAddress, port, listIterator);
+            initializeSlowStart(socket, listIterator);
 
         }
     }
@@ -313,5 +307,26 @@ public class ClientEnvia {
         String[] split = new String(message.getData()).split("-");
 
         return new DatagramPacketResponse(split[0], Integer.parseInt(split[1].trim()));
+    }
+
+    public static DatagramPacketResponse sendPacket(DatagramPacketInfo packet, DatagramSocket socket) throws Exception{
+        byte[] responseData = new byte[1024];
+        DatagramPacket receivePacket = new DatagramPacket(responseData, responseData.length, ipAddress, RECEIVER_PORT);
+
+        String message = Arrays.toString(packet.getFileData()) + "-" + packet.getCRC() + "-" + packet.getSeq();
+
+        System.out.println("enviando mensagem: " + message);
+
+        byte[] packetData = message.getBytes();
+
+        DatagramPacket sendPacket = new DatagramPacket(packetData, packetData.length, ipAddress, RECEIVER_PORT);
+
+        socket.send(sendPacket);
+
+        socket.receive(receivePacket);
+
+        DatagramPacketResponse response = parseMessage(receivePacket);
+
+        return null;
     }
 }
