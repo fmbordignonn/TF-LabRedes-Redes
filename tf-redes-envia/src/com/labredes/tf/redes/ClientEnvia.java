@@ -78,7 +78,7 @@ public class ClientEnvia {
         int packetCalculo = 1;
         while (packetCalculo != packageLimit) {
             packetCalculo *= 2;
-            actualPackageLimit = actualPackageLimit * 2;
+            actualPackageLimit = actualPackageLimit * 2 + 1;
         }
 
         List<String> acksReceived = new ArrayList<String>();
@@ -139,7 +139,7 @@ public class ClientEnvia {
         List<String> acksReceived = new ArrayList<String>();
 
         //trocar por slow start max packages?
-        int quantPacketSend = 3;
+        int quantPacketSend = SLOW_START_MAX_DATA_PACKAGES + 1;
 
         try {
             while (packets.size() != listIterator) {
@@ -162,14 +162,14 @@ public class ClientEnvia {
                     listIterator++;
                 }
 
+                for (int i = 0; i < acksReceived.size(); i++) {
+                    System.out.println(acksReceived.get(i));
+                }
+
+                acksReceived = new ArrayList<String>();
+
                 quantPacketSend++;
             }
-
-            for (int i = 0; i < acksReceived.size(); i++) {
-                System.out.println(acksReceived.get(i));
-            }
-
-            acksReceived = new ArrayList<String>();
 
         } catch (SocketTimeoutException ex) {
             congestionAvoidance(listIterator);
@@ -192,7 +192,7 @@ public class ClientEnvia {
 
     public static void checkReplicateAck(DatagramPacketResponse response, int seqSent) throws Exception{
         //ACK duplicado, deu pau..
-        if (response.getSeq() != seqSent) {
+        if (seqSent != response.getSeq() - 1 ) {
             System.out.println("recebeu um ack replicado");
 
             int replicado = response.getSeq();
@@ -283,7 +283,7 @@ public class ClientEnvia {
         //16 pacotes
         packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 1));
         packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 2));
-        //packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 3));
+        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 3));
         packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 4));
         packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 5));
         packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 6));
@@ -298,7 +298,8 @@ public class ClientEnvia {
 
         List<String> data = Files.readAllLines(path);
 
-        int numeroSequencia = 0;
+        //MOCK, ALTERAR PRA 0 QUANDO FOR VERSAO FINAL
+        int numeroSequencia = 13;
 
         //coloca na lista de dados de cada packet o que deve ser enviado, em ordem
         for (int i = 0; i < data.size(); i++) {

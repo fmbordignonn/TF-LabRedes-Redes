@@ -43,7 +43,7 @@ class ClientRecebe {
             DatagramPacketInfo packetInfo = parseMessage(receivedMessage);
 
             //recebeu pacote de um ack q tava duplicado
-            if(lastSeqReceived < packetInfo.getSeq() && lastSeqReceived != -1){
+            if(lastSeqReceived < packetInfo.getSeq() - 1 && lastSeqReceived != -1){
                 System.out.println("ADICIONANDO PACOTE Q VEIO DE UM ACK DUPLICADO - SEQ [" +packetInfo.getSeq() + "]");
 
                 receivedFileData.put(packetInfo.getSeq(), packetInfo.getFileData());
@@ -79,6 +79,7 @@ class ClientRecebe {
             }
 
             //insere no dicionario de pacotes recebidos os dados desse arquivo, com chave = seq
+            //aqui q tem q validar o CRC
             receivedFileData.put(packetInfo.getSeq(), packetInfo.getFileData());
 
             packetInfo.setSeq(packetInfo.getSeq() + 1);
