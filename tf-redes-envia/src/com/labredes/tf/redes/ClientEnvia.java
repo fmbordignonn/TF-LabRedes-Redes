@@ -210,17 +210,19 @@ public class ClientEnvia {
                     .map(Map.Entry::getKey)
                     .collect(Collectors.toList());
 
-            //value aqui é o seq do pacote perdido
-            for (int seq : packetsLostSeqNumber) {
-                DatagramPacketInfo packet = packets.get(seq);
-                System.out.println("REENVIANDO PACOTE QUE FOI PERDIDO - SEQ[" + packet.getSeq() + "]");
-                DatagramPacketResponse newResponse = sendPacket(packet);
+            if(!packetsLostSeqNumber.isEmpty()){
+                //value aqui é o seq do pacote perdido
+                for (int seq : packetsLostSeqNumber) {
+                    DatagramPacketInfo packet = packets.get(seq);
+                    System.out.println("REENVIANDO PACOTE QUE FOI PERDIDO - SEQ[" + packet.getSeq() + "]");
+                    DatagramPacketResponse newResponse = sendPacket(packet);
 
-                //ver oq fazer com o response aqui
+                    //ver oq fazer com o response aqui
 
-                //removendo que este pacote foi perdido
-                acksReplicados.remove(seq);
-                //TRATAR OQ ACONTECE SE DER PAU DNV
+                    //removendo que este pacote foi perdido
+                    acksReplicados.remove(seq);
+                    //TRATAR OQ ACONTECE SE DER PAU DNV
+                }
             }
         }
     }
@@ -284,7 +286,7 @@ public class ClientEnvia {
         packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 1));
         packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 2));
         packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 3));
-        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 4));
+        //packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 4));
         packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 5));
         packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 6));
         packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 7));

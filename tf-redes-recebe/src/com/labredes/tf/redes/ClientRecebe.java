@@ -43,16 +43,30 @@ class ClientRecebe {
             DatagramPacketInfo packetInfo = parseMessage(receivedMessage);
 
             //recebeu pacote de um ack q tava duplicado
+
+            //TEM QUE MUDAR O JEITO QUE IDENTIFICA ACK REPLICADO
+            //da pra fazer uma validação "backwards" - recebe seq 3, entao verifica se o 1 e 2 ja estao preenchidos na lista ou
+            //foram perdidos no limbo
+            //se tiver um faltando, retorna os acks repetidos pra fechar 3 e reenvia,
+            //vai fazer isso pra todos os itens que faltarem na lista
             if(lastSeqReceived < packetInfo.getSeq() - 1 && lastSeqReceived != -1){
-                System.out.println("ADICIONANDO PACOTE Q VEIO DE UM ACK DUPLICADO - SEQ [" +packetInfo.getSeq() + "]");
+                int lostPacket = packetInfo.getSeq() - 1;
+
+                System.out.println("FALTOU PACOTE! - SEQ RECEBIDO [" +packetInfo.getSeq() + "] - PACKET QUE FALTA [" + lostPacket + "]");
+
+                //e se falhar mais de um em seguida?
 
                 receivedFileData.put(packetInfo.getSeq(), packetInfo.getFileData());
 
                 DatagramPacket response = new DatagramPacket(sendData, sendData.length, IPAddress, port);
 
-                response.setData(("ACK-" + packetInfo.getSeq() + 1).getBytes());
+                response.setData(("ACK-" +
+                        //necessario parenteses senao ele trata tudo como string. ex: retorna 71 ao invés de 8
+                        (packetInfo.getSeq())
+                ).getBytes());
 
                 serverSocket.send(response);
+                lastSeqReceived = packetInfo.getSeq();
                 continue;
             }
 
@@ -66,6 +80,7 @@ class ClientRecebe {
                 response.setData(("ACK-" + lastSeqReceived).getBytes());
 
                 serverSocket.send(response);
+
                 continue;
             }
 
@@ -75,6 +90,7 @@ class ClientRecebe {
             for (int i = 0; i < packetInfo.getFileData().length; i++) {
                 if(packetInfo.getFileData()[i] == 124){
                     packetInfo.getFileData()[i] = 0;
+                    System.out.println("pacote final");
                 }
             }
 
