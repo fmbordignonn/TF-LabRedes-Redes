@@ -3,6 +3,8 @@ package com.labredes.tf.redes;
 import java.io.*;
 import java.net.*;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 
 
 class ClientRecebe {
@@ -14,13 +16,15 @@ class ClientRecebe {
 
         int lastSeqReceived = -1;
 
+        Map<Integer, byte[]> receivedFileData = new HashMap<>();
+
         byte[] receiveData;
 
         byte[] sendData;
 
         while (true) {
 
-            Thread.sleep(500);
+            Thread.sleep(1000);
 
             receiveData = new byte[10024];
             sendData = new byte[1024];
@@ -38,10 +42,23 @@ class ClientRecebe {
 
             DatagramPacketInfo packetInfo = parseMessage(receivedMessage);
 
+            //recebeu pacote de um ack q tava duplicado
+            if(lastSeqReceived < packetInfo.getSeq() && lastSeqReceived != -1){
+                System.out.println("ADICIONANDO PACOTE Q VEIO DE UM ACK DUPLICADO - SEQ [" +packetInfo.getSeq() + "]");
+
+                receivedFileData.put(packetInfo.getSeq(), packetInfo.getFileData());
+
+                DatagramPacket response = new DatagramPacket(sendData, sendData.length, IPAddress, port);
+
+                response.setData(("ACK-" + packetInfo.getSeq() + 1).getBytes());
+
+                serverSocket.send(response);
+                continue;
+            }
+
             //validaçao pra -1 pq é o valor inicial da variavel
             //se o valor da ultima sequencia recebida for diferente da seq do pacote recebido agora -1, significa que faltou algum pacote
-            //no caminho
-
+            //no caminho.
             //isso é o "fast retransmit"
             if(lastSeqReceived != packetInfo.getSeq() - 1 && lastSeqReceived != -1){
                 DatagramPacket response = new DatagramPacket(sendData, sendData.length, IPAddress, port);
@@ -60,6 +77,9 @@ class ClientRecebe {
                     packetInfo.getFileData()[i] = 0;
                 }
             }
+
+            //insere no dicionario de pacotes recebidos os dados desse arquivo, com chave = seq
+            receivedFileData.put(packetInfo.getSeq(), packetInfo.getFileData());
 
             packetInfo.setSeq(packetInfo.getSeq() + 1);
 
