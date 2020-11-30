@@ -1,5 +1,6 @@
 package com.labredes.tf.redes;
 
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
 import java.net.*;
@@ -266,6 +267,10 @@ class ClientRecebe {
         FileOutputStream fos = new FileOutputStream(fileDirectory + "\\arquivo recebido.txt");
 
         fos.write(allFileBytes);
+
+        File file = new File(fileDirectory + "\\arquivo recebido.txt");
+
+        file.hashCode();
 
         System.out.println("Salvou o arquivo com sucesso");
 
