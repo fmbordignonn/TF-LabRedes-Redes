@@ -63,6 +63,8 @@ class ClientRecebe {
 
                 System.out.println("TERMINOU DE RECEBER TODOS PACOTES! DESCONECTANDO CLIENT....");
 
+                buildAndValidateFile();
+
                 //avaliar
                 for (int i = 0; i < packetInfo.getFileData().length; i++) {
                     if (packetInfo.getFileData()[i] == 124) {
@@ -162,7 +164,7 @@ class ClientRecebe {
 
         String[] splitMessage = message.split("-");
 
-        packetInfo.setFileData(fazGambiarra(splitMessage[0]));
+        packetInfo.setFileData(formatByteArray(splitMessage[0]));
         packetInfo.setCRC(Long.parseLong(splitMessage[1]));
         packetInfo.setSeq(Integer.parseInt(splitMessage[2].trim()));
 
@@ -178,20 +180,24 @@ class ClientRecebe {
     }
 
     //monta o fileData do DatagramPacketInfo
-    public static byte[] fazGambiarra(String message) {
-        String gambiarraInicial = message
+    public static byte[] formatByteArray(String message) {
+        String initial = message
                 .replace("[", "")
                 .replace("]", "")
                 .replace(" ", "");
 
-        String[] gambiarraParte2 = gambiarraInicial.split(",");
+        String[] size = initial.split(",");
 
-        byte[] gambiarraFinal = new byte[gambiarraParte2.length];
+        byte[] auxArray = new byte[size.length];
 
-        for (int i = 0; i < gambiarraParte2.length; i++) {
-            gambiarraFinal[i] = Byte.parseByte(gambiarraParte2[i]);
+        for (int i = 0; i < size.length; i++) {
+            auxArray[i] = Byte.parseByte(size[i]);
         }
 
-        return gambiarraFinal;
+        return auxArray;
+    }
+
+    public void buildAndValidateFile(){
+
     }
 }
