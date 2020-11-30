@@ -1,6 +1,7 @@
 package com.labredes.tf.redes;
 
 
+import javax.xml.crypto.Data;
 import java.io.*;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -193,7 +194,7 @@ public class ClientEnvia {
     public static void checkReplicateAck(DatagramPacketResponse response, int seqSent) throws Exception{
         //ACK duplicado, deu pau..
         if (seqSent != response.getSeq() - 1 ) {
-            System.out.println("recebeu um ack replicado");
+            //System.out.println("recebeu um ack replicado");
 
             int replicado = response.getSeq();
 
@@ -213,15 +214,50 @@ public class ClientEnvia {
             if(!packetsLostSeqNumber.isEmpty()){
                 //value aqui é o seq do pacote perdido
                 for (int seq : packetsLostSeqNumber) {
-                    DatagramPacketInfo packet = packets.get(seq);
-                    System.out.println("REENVIANDO PACOTE QUE FOI PERDIDO - SEQ[" + packet.getSeq() + "]");
+                    DatagramPacketInfo packet = packets
+                            .stream()
+                            .filter(x -> x.getSeq() == seq)
+                            .findFirst()
+                            //TEMPORARIO
+                            .orElse(null);
+                    //tecnicamente, o programa NUNCA vai cair nesse orElseThrow,pq o sequenciamento de pacotes vai estar correto,
+                    //ele tá aqui só pq enquanto estamos testando com pacotes mockados, eles nao sao perdidos na rede, mas sim deletados
+                    //no lado do client
+                    //.orElseThrow(() -> new Exception("Não foi encontrado o pacote que falhou no envio"));
+
+                    //TEMPORARIO TBM
+                    if(packet == null){
+                        if(seq == 4){
+                            packet = new DatagramPacketInfo(new byte[] {4,4,4,4}, 123453252, seq);
+                        }
+
+                        if(seq == 5){
+                            packet = new DatagramPacketInfo(new byte[] {5,5,5,5}, 123453252, seq);
+                        }
+
+                        if(seq == 6){
+                            packet = new DatagramPacketInfo(new byte[] {6,6,6,6}, 123453252, seq);
+                        }
+
+                        if(seq == 7){
+                            packet = new DatagramPacketInfo(new byte[] {7,7,7,7}, 123453252, seq);
+                        }
+
+                        if(seq == 11){
+                            packet = new DatagramPacketInfo(new byte[] {11,11,11,11}, 123453252, seq);
+                        }
+                    }
+
+
+                    System.out.println("REENVIANDO PACOTE QUE FOI PERDIDO - SEQ[" + replicado + "]");
                     DatagramPacketResponse newResponse = sendPacket(packet);
+
+                    System.out.println("PACOTE QUE HAVIA FALHADO RECEBIDO COM SUCESSO!");
 
                     //ver oq fazer com o response aqui
 
                     //removendo que este pacote foi perdido
                     acksReplicados.remove(seq);
-                    //TRATAR OQ ACONTECE SE DER PAU DNV
                 }
             }
         }
@@ -282,18 +318,18 @@ public class ClientEnvia {
 
         long valor = 1215645;
 
-        //16 pacotes
+        //12 pacotes
         packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 1));
         packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 2));
         packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 3));
-        //packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 4));
+        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 4));
         packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 5));
         packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 6));
         packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 7));
         packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 8));
         packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 9));
         packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 10));
-        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 11));
+        //packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 11));
         packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 12));
 
         Path path = Paths.get(filepath);
