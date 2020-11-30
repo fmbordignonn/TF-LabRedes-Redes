@@ -90,7 +90,9 @@ public class ClientEnvia {
                         break;
                     }
 
-                    DatagramPacketResponse response = sendPacket(info);
+                    sendPacket(info);
+
+                    DatagramPacketResponse response = receivePacket();
 
                     acksReceived.add("recebe response: " + response.getMessage() + ":" + response.getSeq());
 
@@ -148,7 +150,8 @@ public class ClientEnvia {
                         break;
                     }
 
-                    DatagramPacketResponse response = sendPacket(packetInfo);
+                    sendPacket(packetInfo);
+                    DatagramPacketResponse response = receivePacket();
 
                     checkReplicateAck(response, packetInfo.getSeq());
 
@@ -168,10 +171,11 @@ public class ClientEnvia {
 
             String finalServerResponse = "";
 
-            if(packetInfo.isFinalPacket()){
-                while(finalServerResponse != "FINISHED"){
+            if (packetInfo.isFinalPacket()) {
+                while (!finalServerResponse.equals("FINISHED")) {
+                    System.out.println("FALTOU ALGUM PACOTE NO CAMINHO, CONVERSANDO COM SERVER PRA VER QUAL");
 
-                    //checkReplicateAck();
+                    finalServerResponse = sendLastMissingPackets();
                 }
             }
 
@@ -249,11 +253,18 @@ public class ClientEnvia {
                         if (seq == 11) {
                             packet = new DatagramPacketInfo(new byte[]{11, 11, 11, 11}, 123453252, seq);
                         }
+
+                        if (seq == 12) {
+                            packet = new DatagramPacketInfo(new byte[]{12, 12, 12, 12}, 123453252, seq);
+                        }
                     }
 
 
                     System.out.println("REENVIANDO PACOTE QUE FOI PERDIDO - SEQ[" + replicado + "]");
-                    DatagramPacketResponse newResponse = sendPacket(packet);
+
+                    sendPacket(packet);
+
+                    DatagramPacketResponse newResponse = receivePacket();
 
                     System.out.println("PACOTE QUE HAVIA FALHADO RECEBIDO COM SUCESSO!");
 
@@ -266,16 +277,122 @@ public class ClientEnvia {
         }
     }
 
+    public static String sendLastMissingPackets() throws Exception{
+        DatagramPacketResponse newResponse = null;
+
+        List<Integer> packetsLostSeqNumber = acksReplicados.entrySet().stream()
+                //se ja tiver 3 ou mais acks na lista...
+                .filter(x -> x.getValue() >= 1)
+                //pega a key (seq do pacote perdido)...
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toList());
+
+        if (!packetsLostSeqNumber.isEmpty()) {
+            //value aqui é o seq do pacote perdido
+
+            for (int seq : packetsLostSeqNumber) {
+                DatagramPacketInfo packet = packets
+                        .stream()
+                        .filter(x -> x.getSeq() == seq)
+                        .findFirst()
+                        //TEMPORARIO
+                        .orElse(null);
+                //tecnicamente, o programa NUNCA vai cair nesse orElseThrow,pq o sequenciamento de pacotes vai estar correto,
+                //ele tá aqui só pq enquanto estamos testando com pacotes mockados, eles nao sao perdidos na rede, mas sim deletados
+                //no lado do client
+                //.orElseThrow(() -> new Exception("Não foi encontrado o pacote que falhou no envio"));
+
+                //TEMPORARIO TBM
+                if (packet == null) {
+                    if (seq == 1) {
+                        packet = new DatagramPacketInfo(new byte[]{1,1,1,1}, 123453252, seq);
+                    }
+
+                    if (seq == 2) {
+                        packet = new DatagramPacketInfo(new byte[]{2,2,2,2}, 123453252, seq);
+                    }
+
+                    if (seq == 3) {
+                        packet = new DatagramPacketInfo(new byte[]{3,3,3,3}, 123453252, seq);
+                    }
+
+                    if (seq == 4) {
+                        packet = new DatagramPacketInfo(new byte[]{4, 4, 4, 4}, 123453252, seq);
+                    }
+
+                    if (seq == 5) {
+                        packet = new DatagramPacketInfo(new byte[]{5, 5, 5, 5}, 123453252, seq);
+                    }
+
+                    if (seq == 6) {
+                        packet = new DatagramPacketInfo(new byte[]{6, 6, 6, 6}, 123453252, seq);
+                    }
+
+                    if (seq == 7) {
+                        packet = new DatagramPacketInfo(new byte[]{7, 7, 7, 7}, 123453252, seq);
+                    }
+
+                    if (seq == 8) {
+                        packet = new DatagramPacketInfo(new byte[]{8,8,8,8}, 123453252, seq);
+                    }
+
+                    if (seq == 9) {
+                        packet = new DatagramPacketInfo(new byte[]{9,9,9,9}, 123453252, seq);
+                    }
+
+                    if (seq == 10) {
+                        packet = new DatagramPacketInfo(new byte[]{10,10,10,10}, 123453252, seq);
+                    }
+
+                    if (seq == 11) {
+                        packet = new DatagramPacketInfo(new byte[]{11, 11, 11, 11}, 123453252, seq);
+                    }
+
+                    if (seq == 12) {
+                        packet = new DatagramPacketInfo(new byte[]{12, 12, 12, 12}, 123453252, seq);
+                    }
+                }
+
+
+                System.out.println("REENVIANDO PACOTE QUE FOI PERDIDO - SEQ[" + seq + "]");
+
+                sendPacket(packet);
+
+                newResponse = receivePacket();
+
+                if(!newResponse.getMessage().trim().equals("FINISHED")){
+                    acksReplicados.remove(seq);
+                    acksReplicados.put(newResponse.getSeq(), 3);
+
+                    sendLastMissingPackets();
+                }
+
+                System.out.println("PACOTE QUE HAVIA FALHADO RECEBIDO COM SUCESSO!");
+
+                //ver oq fazer com o response aquinewResponse = receivePacket();
+
+                //removendo que este pacote foi perdido
+                acksReplicados.remove(seq);
+
+                return newResponse.getMessage();
+            }
+        }
+
+        return "FINISHED";
+    }
+
     public static DatagramPacketResponse parseResponseMessage(DatagramPacket message) {
         String[] split = new String(message.getData()).split("-");
+
+        if (split[0].trim().equals("FINISHED")) {
+            //nao importa o seq aqui
+            return new DatagramPacketResponse(split[0], 1);
+        }
 
         return new DatagramPacketResponse(split[0], Integer.parseInt(split[1].trim()));
     }
 
-    public static DatagramPacketResponse sendPacket(DatagramPacketInfo packet) throws Exception {
-        byte[] responseData = new byte[1024];
-        DatagramPacket receivePacket = new DatagramPacket(responseData, responseData.length, ipAddress, RECEIVER_PORT);
-
+    public static void sendPacket(DatagramPacketInfo packet) throws Exception {
         String message = "";
 
         if (packet.isFinalPacket()) {
@@ -291,12 +408,16 @@ public class ClientEnvia {
         DatagramPacket sendPacket = new DatagramPacket(packetData, packetData.length, ipAddress, RECEIVER_PORT);
 
         clientSocket.send(sendPacket);
+    }
+
+    public static DatagramPacketResponse receivePacket() throws Exception {
+        byte[] responseData = new byte[1024];
+
+        DatagramPacket receivePacket = new DatagramPacket(responseData, responseData.length, ipAddress, RECEIVER_PORT);
 
         clientSocket.receive(receivePacket);
 
         DatagramPacketResponse response = parseResponseMessage(receivePacket);
-
-        //System.out.println("recebe response: " + response.getMessage() + ":" + response.getSeq());
 
         return response;
     }
@@ -331,13 +452,13 @@ public class ClientEnvia {
         packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 1));
         packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 2));
         packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 3));
-        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 4));
-        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 5));
-        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 6));
-        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 7));
-        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 8));
-        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 9));
-        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 10));
+//        //packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 4));
+//        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 5));
+//        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 6));
+//        //packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 7));
+//        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 8));
+//        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 9));
+//        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 10));
         //packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 11));
         packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 12));
         packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 13, true));

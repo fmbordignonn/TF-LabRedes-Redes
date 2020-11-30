@@ -11,7 +11,8 @@ class ClientRecebe {
 
     static Map<Integer, byte[]> receivedFileData = new HashMap<>();
     static DatagramSocket serverSocket;
-
+    static InetAddress ipAddress;
+    static int port;
 
     public static void main(String args[]) throws Exception {
         System.out.println("Iniciou");
@@ -19,51 +20,48 @@ class ClientRecebe {
         //estabelecendo que esse socket roda na porta 9876
         serverSocket = new DatagramSocket(9876);
 
-        int lastSeqReceived = -1;
-
-        byte[] receiveData;
-
         while (true) {
 
             Thread.sleep(1000);
 
-            receiveData = new byte[10024];
+            DatagramPacketInfo packetInfo = receivePacket();
 
-            DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
-            serverSocket.receive(receivePacket);
+            int finalPacketSeqNumber = 0;
 
-            String receivedMessage = new String(receivePacket.getData());
+            if (packetInfo.isFinalPacket()) {
 
-            InetAddress IPAddress = receivePacket.getAddress();
+                receivedFileData.put(packetInfo.getSeq(), packetInfo.getFileData());
 
-            int port = receivePacket.getPort();
-
-            System.out.println("Mensagem recebida: " + receivedMessage.replace("-", " - "));
-
-            DatagramPacketInfo packetInfo = parseInputMessage(receivedMessage);
-
-            if(packetInfo.isFinalPacket()){
+                finalPacketSeqNumber = packetInfo.getSeq();
 
                 int missingPacket = 0;
 
-                do{
+                do {
                     //ultimo packet recebido
                     //validar se recebeu o ultimo?
-                    missingPacket = checkMissingPackets(packetInfo.getSeq());
+
+                    missingPacket = checkMissingPackets(finalPacketSeqNumber);
 
                     if (!(missingPacket == 0)) {
                         System.out.println("TÁ NO PACOTE FINAL, E ALGUM FOI PERDIDO NO MEIO DO CAMINHO, INICIANDO REQUISIÇAO DESSE PACOTE");
 
                         //missingPacket contém o pacote perdido
                         //server deve requisitar ele novamente
-                        sendResponsePacket("ACK-" + missingPacket, IPAddress, port);
+                        sendResponsePacket("ACK-" + missingPacket, ipAddress, port);
 
-                        continue;
+                        packetInfo = receivePacket();
+
+                        if(packetInfo.getSeq() == missingPacket){
+                            receivedFileData.put(packetInfo.getSeq(), packetInfo.getFileData());
+                            continue;
+                        }
                     }
 
-                }while(missingPacket != 0);
+                } while (missingPacket != 0);
 
-                sendResponsePacket("FINISHED", IPAddress, port);
+                sendResponsePacket("FINISHED", ipAddress, port);
+
+                System.out.println("TERMINOU DE RECEBER TODOS PACOTES! DESCONECTANDO CLIENT....");
 
                 //avaliar
                 for (int i = 0; i < packetInfo.getFileData().length; i++) {
@@ -83,20 +81,20 @@ class ClientRecebe {
             if (!(missingPacket == 0)) {
                 //missingPacket contém o pacote perdido
                 //server deve requisitar ele novamente
-                sendResponsePacket("ACK-" + missingPacket, IPAddress, port);
+                sendResponsePacket("ACK-" + missingPacket, ipAddress, port);
 
                 continue;
             }
 
             //retirando delimiter da msg no client q envia o file (variavel FILE_END_DELIMITER_CHAR)
             //MUDA ISSO DPS TA MT FEIO
-            if(packetInfo.isFinalPacket()){
+            if (packetInfo.isFinalPacket()) {
                 System.out.println("pacote final");
             }
 
             packetInfo.setSeq(packetInfo.getSeq() + 1);
 
-            sendResponsePacket("ACK-" + packetInfo.getSeq(), IPAddress, port);
+            sendResponsePacket("ACK-" + packetInfo.getSeq(), ipAddress, port);
 
         }
     }
@@ -111,6 +109,26 @@ class ClientRecebe {
         serverSocket.send(response);
     }
 
+    public static DatagramPacketInfo receivePacket() throws Exception {
+        byte[] receiveData = new byte[10024];
+
+        DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
+        serverSocket.receive(receivePacket);
+
+        String receivedMessage = new String(receivePacket.getData());
+
+        ipAddress = receivePacket.getAddress();
+
+        port = receivePacket.getPort();
+
+        System.out.println("Mensagem recebida: " + receivedMessage.replace("-", " - "));
+
+        DatagramPacketInfo packetInfo = parseInputMessage(receivedMessage);
+
+        return packetInfo;
+
+    }
+
     /**
      * @param seqReceived sequence number recebido no pacote atual
      * @return 0 se nao há pacotes faltando, senao retorna o sequence number do pacote faltando
@@ -122,9 +140,14 @@ class ClientRecebe {
                 .filter(seq -> seq <= seqReceived)
                 .collect(Collectors.toList());
 
+        if(seqReceived == 13 ){
+            System.out.println("asda");
+        }
+
         //verifica se os ultimos pacotes antes do que chegou agora chegaram ok..
         //ver se o size nao vai buga
-        for (int seq = 1; seq <= lista.size(); seq++) {
+        for (int seq = 1; seq <= seqReceived; seq++) {
+
             //se um pacote nao chegou, precisa pedir de novo
             //seq - 1 no lista.get pq os index começam em 0
             if (seq != lista.get(seq - 1)) {
