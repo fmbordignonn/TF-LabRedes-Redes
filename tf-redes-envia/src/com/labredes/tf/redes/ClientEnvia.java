@@ -52,6 +52,8 @@ public class ClientEnvia {
 
         ipAddress = InetAddress.getByName("localhost");
 
+        clientSocket.setSoTimeout(3*1000);
+
         System.out.println("\nConexão estabelecida!");
 
         createPackets();
@@ -99,11 +101,8 @@ public class ClientEnvia {
 
                     acksReceived.add("recebe response: " + response.getMessage() + ":" + response.getSeq());
 
-                    if (response.getSeq() != info.getSeq() + 1) {
-                        System.out.println("ack duplicado recebido");
-                        System.out.println("DEU ACK DUPLICADO NO SLOW START, ENCERRANDO APP (TEMPORARIO)");
-                        System.exit(0);
-                    }
+
+
                 }
 
                 for (int i = 0; i < acksReceived.size(); i++) {
@@ -124,7 +123,6 @@ public class ClientEnvia {
             System.out.println("Timeout");
             System.out.println("Reenviando pacote...");
 
-            //listIterator = 0;
             initializeSlowStart(SLOW_START_MAX_DATA_PACKAGES);
 
         }
@@ -185,7 +183,7 @@ public class ClientEnvia {
             }
 
         } catch (SocketTimeoutException ex) {
-            congestionAvoidance(listIterator);
+
 
             for (int i = 0; i < acksReceived.size(); i++) {
                 System.out.println(acksReceived.get(i));
@@ -196,9 +194,8 @@ public class ClientEnvia {
             System.out.println("Timeout");
             System.out.println("Reenviando pacote...");
 
-            listIterator = 0;
-            //ta dando pau
-            initializeSlowStart(listIterator);
+            acksReplicados.clear();
+            initializeSlowStart(SLOW_START_MAX_DATA_PACKAGES);
 
         }
     }
@@ -447,7 +444,10 @@ public class ClientEnvia {
 
         int input = in.nextInt();
 
-        String filepath = "C:\\Users\\Felipe\\Desktop\\Trabalho final redes\\TF-LabRedes-Redes\\tf-redes-envia\\input\\case1.txt";
+        //String filepath = "C:\\Users\\Felipe\\Desktop\\Trabalho final redes\\TF-LabRedes-Redes\\tf-redes-envia\\input\\case1.txt";
+
+
+        String filepath = "C:\\Users\\feeel\\Desktop\\TF-LabRedes-Redes\\tf-redes-envia\\input\\case1.txt";
 
         long valor = 1215645;
 
