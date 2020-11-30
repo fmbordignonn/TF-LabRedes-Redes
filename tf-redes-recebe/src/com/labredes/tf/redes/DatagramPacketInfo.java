@@ -1,23 +1,33 @@
 package com.labredes.tf.redes;
 
+import java.util.Arrays;
+import java.util.Objects;
+
 public class DatagramPacketInfo {
 
     public DatagramPacketInfo() {
     }
 
-    public DatagramPacketInfo(byte[] fileData, String CRC, int seq) {
+    public DatagramPacketInfo(byte[] fileData, long CRC, int seq) {
         this.fileData = fileData;
         this.CRC = CRC;
         this.seq = seq;
     }
 
+    public DatagramPacketInfo(byte[] fileData, long CRC, int seq, boolean finalPacket) {
+        this.fileData = fileData;
+        this.CRC = CRC;
+        this.seq = seq;
+        this.finalPacket = finalPacket;
+    }
+
     private byte[] fileData;
 
-    private String CRC;
+    private long CRC;
 
     private int seq;
 
-    private int amountOfPacketsSent;
+    private boolean finalPacket;
 
     public byte[] getFileData() {
         return fileData;
@@ -27,11 +37,11 @@ public class DatagramPacketInfo {
         this.fileData = fileData;
     }
 
-    public String getCRC() {
+    public long getCRC() {
         return CRC;
     }
 
-    public void setCRC(String CRC) {
+    public void setCRC(long CRC) {
         this.CRC = CRC;
     }
 
@@ -42,4 +52,8 @@ public class DatagramPacketInfo {
     public void setSeq(int seq) {
         this.seq = seq;
     }
+
+    public boolean isFinalPacket() { return finalPacket; }
+
+    public void setFinalPacket(boolean finalPacket) { this.finalPacket = finalPacket; }
 }

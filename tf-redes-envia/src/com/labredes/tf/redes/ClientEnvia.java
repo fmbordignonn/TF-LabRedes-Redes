@@ -1,18 +1,12 @@
 package com.labredes.tf.redes;
 
 
-import javax.xml.crypto.Data;
-import java.io.*;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketTimeoutException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 import java.util.zip.CRC32;
 
 public class ClientEnvia {
@@ -135,7 +129,7 @@ public class ClientEnvia {
     public static void congestionAvoidance(int listIterator) throws Exception {
         System.out.println("Cheguei no congestionAvoidance");
 
-        DatagramPacketInfo info;
+        DatagramPacketInfo packetInfo = null;
 
         List<String> acksReceived = new ArrayList<String>();
 
@@ -148,15 +142,15 @@ public class ClientEnvia {
                 for (int i = 0; i < quantPacketSend; i++) {
 
                     try {
-                        info = packets.get(listIterator);
+                        packetInfo = packets.get(listIterator);
                     } catch (Exception ex) {
                         //acabou de iterar, enviou tudo
                         break;
                     }
 
-                    DatagramPacketResponse response = sendPacket(info);
+                    DatagramPacketResponse response = sendPacket(packetInfo);
 
-                    checkReplicateAck(response, info.getSeq());
+                    checkReplicateAck(response, packetInfo.getSeq());
 
                     acksReceived.add("recebe response: " + response.getMessage() + ":" + response.getSeq());
 
@@ -170,6 +164,15 @@ public class ClientEnvia {
                 acksReceived = new ArrayList<String>();
 
                 quantPacketSend++;
+            }
+
+            String finalServerResponse = "";
+
+            if(packetInfo.isFinalPacket()){
+                while(finalServerResponse != "FINISHED"){
+
+                    //checkReplicateAck();
+                }
             }
 
         } catch (SocketTimeoutException ex) {
@@ -191,9 +194,9 @@ public class ClientEnvia {
         }
     }
 
-    public static void checkReplicateAck(DatagramPacketResponse response, int seqSent) throws Exception{
+    public static void checkReplicateAck(DatagramPacketResponse response, int seqSent) throws Exception {
         //ACK duplicado, deu pau..
-        if (seqSent != response.getSeq() - 1 ) {
+        if (seqSent != response.getSeq() - 1) {
             //System.out.println("recebeu um ack replicado");
 
             int replicado = response.getSeq();
@@ -211,7 +214,7 @@ public class ClientEnvia {
                     .map(Map.Entry::getKey)
                     .collect(Collectors.toList());
 
-            if(!packetsLostSeqNumber.isEmpty()){
+            if (!packetsLostSeqNumber.isEmpty()) {
                 //value aqui é o seq do pacote perdido
                 for (int seq : packetsLostSeqNumber) {
                     DatagramPacketInfo packet = packets
@@ -226,25 +229,25 @@ public class ClientEnvia {
                     //.orElseThrow(() -> new Exception("Não foi encontrado o pacote que falhou no envio"));
 
                     //TEMPORARIO TBM
-                    if(packet == null){
-                        if(seq == 4){
-                            packet = new DatagramPacketInfo(new byte[] {4,4,4,4}, 123453252, seq);
+                    if (packet == null) {
+                        if (seq == 4) {
+                            packet = new DatagramPacketInfo(new byte[]{4, 4, 4, 4}, 123453252, seq);
                         }
 
-                        if(seq == 5){
-                            packet = new DatagramPacketInfo(new byte[] {5,5,5,5}, 123453252, seq);
+                        if (seq == 5) {
+                            packet = new DatagramPacketInfo(new byte[]{5, 5, 5, 5}, 123453252, seq);
                         }
 
-                        if(seq == 6){
-                            packet = new DatagramPacketInfo(new byte[] {6,6,6,6}, 123453252, seq);
+                        if (seq == 6) {
+                            packet = new DatagramPacketInfo(new byte[]{6, 6, 6, 6}, 123453252, seq);
                         }
 
-                        if(seq == 7){
-                            packet = new DatagramPacketInfo(new byte[] {7,7,7,7}, 123453252, seq);
+                        if (seq == 7) {
+                            packet = new DatagramPacketInfo(new byte[]{7, 7, 7, 7}, 123453252, seq);
                         }
 
-                        if(seq == 11){
-                            packet = new DatagramPacketInfo(new byte[] {11,11,11,11}, 123453252, seq);
+                        if (seq == 11) {
+                            packet = new DatagramPacketInfo(new byte[]{11, 11, 11, 11}, 123453252, seq);
                         }
                     }
 
@@ -263,7 +266,7 @@ public class ClientEnvia {
         }
     }
 
-    public static DatagramPacketResponse parseMessage(DatagramPacket message) {
+    public static DatagramPacketResponse parseResponseMessage(DatagramPacket message) {
         String[] split = new String(message.getData()).split("-");
 
         return new DatagramPacketResponse(split[0], Integer.parseInt(split[1].trim()));
@@ -273,7 +276,13 @@ public class ClientEnvia {
         byte[] responseData = new byte[1024];
         DatagramPacket receivePacket = new DatagramPacket(responseData, responseData.length, ipAddress, RECEIVER_PORT);
 
-        String message = Arrays.toString(packet.getFileData()) + "-" + packet.getCRC() + "-" + packet.getSeq();
+        String message = "";
+
+        if (packet.isFinalPacket()) {
+            message = Arrays.toString(packet.getFileData()) + "-" + packet.getCRC() + "-" + packet.getSeq() + "-" + packet.isFinalPacket();
+        } else {
+            message = Arrays.toString(packet.getFileData()) + "-" + packet.getCRC() + "-" + packet.getSeq();
+        }
 
         System.out.println("enviando mensagem: " + message);
 
@@ -285,7 +294,7 @@ public class ClientEnvia {
 
         clientSocket.receive(receivePacket);
 
-        DatagramPacketResponse response = parseMessage(receivePacket);
+        DatagramPacketResponse response = parseResponseMessage(receivePacket);
 
         //System.out.println("recebe response: " + response.getMessage() + ":" + response.getSeq());
 
@@ -331,46 +340,48 @@ public class ClientEnvia {
         packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 10));
         //packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 11));
         packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 12));
+        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 13, true));
 
-        Path path = Paths.get(filepath);
 
-        List<String> data = Files.readAllLines(path);
-
-        //MOCK, ALTERAR PRA 0 QUANDO FOR VERSAO FINAL
-        int numeroSequencia = 13;
-
-        //coloca na lista de dados de cada packet o que deve ser enviado, em ordem
-        for (int i = 0; i < data.size(); i++) {
-
-            String content = data.get(i);
-            final int MAX_BYTES = 300;
-
-            if (content.toCharArray().length < MAX_BYTES) {
-                char[] contentBytes = new char[MAX_BYTES];
-                char[] contentChars = content.toCharArray();
-
-                for (int j = 0; j < contentChars.length; j++) {
-                    contentBytes[j] = contentChars[j];
-                }
-
-                for (int j = contentChars.length; j < MAX_BYTES; j++) {
-                    contentBytes[j] = FILE_END_DELIMITER_CHAR;
-                }
-
-                content = new String(contentBytes);
-
-            }
-
-            byte[] arrayBytes = content.getBytes();
-
-            long crc = calculaCRC(arrayBytes);
-
-            packets.add(new DatagramPacketInfo(arrayBytes, crc, numeroSequencia));
-
-            numeroSequencia++;
-
-        }
-
-        in.close();
+//        Path path = Paths.get(filepath);
+//
+//        List<String> data = Files.readAllLines(path);
+//
+//        //MOCK, ALTERAR PRA 0 QUANDO FOR VERSAO FINAL
+//        int numeroSequencia = 13;
+//
+//        //coloca na lista de dados de cada packet o que deve ser enviado, em ordem
+//        for (int i = 0; i < data.size(); i++) {
+//
+//            String content = data.get(i);
+//            final int MAX_BYTES = 300;
+//
+//            if (content.toCharArray().length < MAX_BYTES) {
+//                char[] contentBytes = new char[MAX_BYTES];
+//                char[] contentChars = content.toCharArray();
+//
+//                for (int j = 0; j < contentChars.length; j++) {
+//                    contentBytes[j] = contentChars[j];
+//                }
+//
+//                for (int j = contentChars.length; j < MAX_BYTES; j++) {
+//                    contentBytes[j] = FILE_END_DELIMITER_CHAR;
+//                }
+//
+//                content = new String(contentBytes);
+//
+//            }
+//
+//            byte[] arrayBytes = content.getBytes();
+//
+//            long crc = calculaCRC(arrayBytes);
+//
+//            packets.add(new DatagramPacketInfo(arrayBytes, crc, numeroSequencia));
+//
+//            numeroSequencia++;
+//
+//        }
+//
+//        in.close();
     }
 }

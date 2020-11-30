@@ -17,7 +17,7 @@ class ClientRecebe {
         System.out.println("Iniciou");
 
         //estabelecendo que esse socket roda na porta 9876
-        serverSocket  = new DatagramSocket(9876);
+        serverSocket = new DatagramSocket(9876);
 
         int lastSeqReceived = -1;
 
@@ -42,86 +42,71 @@ class ClientRecebe {
 
             DatagramPacketInfo packetInfo = parseInputMessage(receivedMessage);
 
+            if(packetInfo.isFinalPacket()){
+
+                int missingPacket = 0;
+
+                do{
+                    //ultimo packet recebido
+                    //validar se recebeu o ultimo?
+                    missingPacket = checkMissingPackets(packetInfo.getSeq());
+
+                    if (!(missingPacket == 0)) {
+                        System.out.println("TÁ NO PACOTE FINAL, E ALGUM FOI PERDIDO NO MEIO DO CAMINHO, INICIANDO REQUISIÇAO DESSE PACOTE");
+
+                        //missingPacket contém o pacote perdido
+                        //server deve requisitar ele novamente
+                        sendResponsePacket("ACK-" + missingPacket, IPAddress, port);
+
+                        continue;
+                    }
+
+                }while(missingPacket != 0);
+
+                sendResponsePacket("FINISHED", IPAddress, port);
+
+                //avaliar
+                for (int i = 0; i < packetInfo.getFileData().length; i++) {
+                    if (packetInfo.getFileData()[i] == 124) {
+                        packetInfo.getFileData()[i] = 0;
+                        System.out.println("pacote final");
+                    }
+                }
+            }
+
             //insere no dicionario de pacotes recebidos os dados desse arquivo, com chave = seq
             //VALIDAR CRC AQUI ANTES DE ADD NO DICIONARIO,MAS FODASE POR ENQUANTO PQ TO FAZENDO FAST RETRANSMIT
             receivedFileData.put(packetInfo.getSeq(), packetInfo.getFileData());
 
             int missingPacket = checkMissingPackets(packetInfo.getSeq());
 
-            if(!(missingPacket == 0)){
+            if (!(missingPacket == 0)) {
                 //missingPacket contém o pacote perdido
                 //server deve requisitar ele novamente
-                sendResponsePacket(missingPacket, IPAddress, port);
+                sendResponsePacket("ACK-" + missingPacket, IPAddress, port);
 
                 continue;
             }
 
             //retirando delimiter da msg no client q envia o file (variavel FILE_END_DELIMITER_CHAR)
             //MUDA ISSO DPS TA MT FEIO
-            for (int i = 0; i < packetInfo.getFileData().length; i++) {
-                if (packetInfo.getFileData()[i] == 124) {
-                    packetInfo.getFileData()[i] = 0;
-                    System.out.println("pacote final");
-                }
+            if(packetInfo.isFinalPacket()){
+                System.out.println("pacote final");
             }
 
             packetInfo.setSeq(packetInfo.getSeq() + 1);
 
-            sendResponsePacket(packetInfo.getSeq(), IPAddress, port);
-
-            //recebeu pacote de um ack q tava duplicado
-
-            //TEM QUE MUDAR O JEITO QUE IDENTIFICA ACK REPLICADO
-            //da pra fazer uma validação "backwards" - recebe seq 3, entao verifica se o 1 e 2 ja estao preenchidos na lista ou
-            //foram perdidos no limbo
-            //se tiver um faltando, retorna os acks repetidos pra fechar 3 e reenvia,
-            //vai fazer isso pra todos os itens que faltarem na lista
-//            if (lastSeqReceived < packetInfo.getSeq() - 1 && lastSeqReceived != -1) {
-//                int lostPacket = packetInfo.getSeq() - 1;
-//
-//                System.out.println("FALTOU PACOTE! - SEQ RECEBIDO [" + packetInfo.getSeq() + "] - PACKET QUE FALTA [" + lostPacket + "]");
-//
-//                //e se falhar mais de um em seguida?
-//
-//                receivedFileData.put(packetInfo.getSeq(), packetInfo.getFileData());
-//
-//                DatagramPacket response = new DatagramPacket(sendData, sendData.length, IPAddress, port);
-//
-//                response.setData(("ACK-" +
-//                        //necessario parenteses senao ele trata tudo como string. ex: retorna 71 ao invés de 8
-//                        (packetInfo.getSeq())
-//                ).getBytes());
-//
-//                serverSocket.send(response);
-//                lastSeqReceived = packetInfo.getSeq();
-//                continue;
-//            }
-//
-//            //validaçao pra -1 pq é o valor inicial da variavel
-//            //se o valor da ultima sequencia recebida for diferente da seq do pacote recebido agora -1, significa que faltou algum pacote
-//            //no caminho.
-//            //isso é o "fast retransmit"
-//            if (lastSeqReceived != packetInfo.getSeq() - 1 && lastSeqReceived != -1) {
-//                DatagramPacket response = new DatagramPacket(sendData, sendData.length, IPAddress, port);
-//
-//                response.setData(("ACK-" + lastSeqReceived).getBytes());
-//
-//                serverSocket.send(response);
-//
-//                continue;
-//            }
-//
-//            lastSeqReceived = packetInfo.getSeq();
+            sendResponsePacket("ACK-" + packetInfo.getSeq(), IPAddress, port);
 
         }
     }
 
-    public static void sendResponsePacket(int seq, InetAddress ipAddress, int port) throws Exception{
-        byte[] sendData  = new byte[1024];
+    public static void sendResponsePacket(String message, InetAddress ipAddress, int port) throws Exception {
+        byte[] sendData = new byte[1024];
 
         DatagramPacket response = new DatagramPacket(sendData, sendData.length, ipAddress, port);
 
-        response.setData(("ACK-" + seq).getBytes());
+        response.setData(message.getBytes());
 
         serverSocket.send(response);
     }
@@ -159,8 +144,16 @@ class ClientRecebe {
         String[] splitMessage = message.split("-");
 
         packetInfo.setFileData(fazGambiarra(splitMessage[0]));
-        packetInfo.setCRC(splitMessage[1]);
+        packetInfo.setCRC(Long.parseLong(splitMessage[1]));
         packetInfo.setSeq(Integer.parseInt(splitMessage[2].trim()));
+
+        try {
+            //Dentro de um try-catch pq só no ultimo pacote vem essa info preenchida como true
+            packetInfo.setFinalPacket(Boolean.parseBoolean(splitMessage[3].trim()));
+        } catch (IndexOutOfBoundsException ex) {
+            //é o ultimo pacote...
+        }
+
 
         return packetInfo;
     }

@@ -14,13 +14,20 @@ public class DatagramPacketInfo {
         this.seq = seq;
     }
 
+    public DatagramPacketInfo(byte[] fileData, long CRC, int seq, boolean finalPacket) {
+        this.fileData = fileData;
+        this.CRC = CRC;
+        this.seq = seq;
+        this.finalPacket = finalPacket;
+    }
+
     private byte[] fileData;
 
     private long CRC;
 
     private int seq;
 
-    private int amountOfPacketsSent;
+    private boolean finalPacket;
 
     public byte[] getFileData() {
         return fileData;
@@ -46,21 +53,7 @@ public class DatagramPacketInfo {
         this.seq = seq;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        DatagramPacketInfo that = (DatagramPacketInfo) o;
-        return CRC == that.CRC &&
-                seq == that.seq &&
-                amountOfPacketsSent == that.amountOfPacketsSent &&
-                Arrays.equals(fileData, that.fileData);
-    }
+    public boolean isFinalPacket() { return finalPacket; }
 
-    @Override
-    public int hashCode() {
-        int result = Objects.hash(CRC, seq, amountOfPacketsSent);
-        result = 31 * result + Arrays.hashCode(fileData);
-        return result;
-    }
+    public void setFinalPacket(boolean finalPacket) { this.finalPacket = finalPacket; }
 }
