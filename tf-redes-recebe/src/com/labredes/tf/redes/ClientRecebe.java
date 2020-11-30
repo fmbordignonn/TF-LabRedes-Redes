@@ -260,7 +260,7 @@ class ClientRecebe {
 
         String fileDirectory = in.nextLine();
 
-        fileDirectory = "C:\\Users\\Felipe\\Desktop";
+        //fileDirectory = "C:\\Users\\Felipe\\Desktop";
 
         in.close();
 
