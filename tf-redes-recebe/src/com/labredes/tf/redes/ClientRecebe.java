@@ -1,10 +1,11 @@
 package com.labredes.tf.redes;
 
+import java.io.FileOutputStream;
+import java.io.OutputStream;
 import java.net.*;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
+import java.util.zip.CRC32;
 
 
 class ClientRecebe {
@@ -20,13 +21,13 @@ class ClientRecebe {
         //estabelecendo que esse socket roda na porta 9876
         serverSocket = new DatagramSocket(9876);
 
+        int finalPacketSeqNumber;
+
         while (true) {
 
-            Thread.sleep(1000);
+            //Thread.sleep(1000);
 
             DatagramPacketInfo packetInfo = receivePacket();
-
-            int finalPacketSeqNumber = 0;
 
             if (packetInfo.isFinalPacket()) {
 
@@ -51,7 +52,7 @@ class ClientRecebe {
 
                         packetInfo = receivePacket();
 
-                        if(packetInfo.getSeq() == missingPacket){
+                        if (packetInfo.getSeq() == missingPacket) {
                             receivedFileData.put(packetInfo.getSeq(), packetInfo.getFileData());
                             continue;
                         }
@@ -63,19 +64,21 @@ class ClientRecebe {
 
                 System.out.println("TERMINOU DE RECEBER TODOS PACOTES! DESCONECTANDO CLIENT....");
 
-                buildAndValidateFile();
+                buildAndValidateFile(finalPacketSeqNumber);
 
-                //avaliar
-                for (int i = 0; i < packetInfo.getFileData().length; i++) {
-                    if (packetInfo.getFileData()[i] == 124) {
-                        packetInfo.getFileData()[i] = 0;
-                        System.out.println("pacote final");
-                    }
-                }
+                break;
             }
 
             //insere no dicionario de pacotes recebidos os dados desse arquivo, com chave = seq
-            //VALIDAR CRC AQUI ANTES DE ADD NO DICIONARIO,MAS FODASE POR ENQUANTO PQ TO FAZENDO FAST RETRANSMIT
+
+            long crc = calculaCRC(packetInfo.getFileData());
+
+            if (crc == packetInfo.getCRC()) {
+                System.out.println("CRC correto, pacote chegou integro");
+            } else {
+                System.out.println("Algo se perdeu no caminho do pacote");
+            }
+
             receivedFileData.put(packetInfo.getSeq(), packetInfo.getFileData());
 
             int missingPacket = checkMissingPackets(packetInfo.getSeq());
@@ -86,12 +89,6 @@ class ClientRecebe {
                 sendResponsePacket("ACK-" + missingPacket, ipAddress, port);
 
                 continue;
-            }
-
-            //retirando delimiter da msg no client q envia o file (variavel FILE_END_DELIMITER_CHAR)
-            //MUDA ISSO DPS TA MT FEIO
-            if (packetInfo.isFinalPacket()) {
-                System.out.println("pacote final");
             }
 
             packetInfo.setSeq(packetInfo.getSeq() + 1);
@@ -197,7 +194,81 @@ class ClientRecebe {
         return auxArray;
     }
 
-    public void buildAndValidateFile(){
+    public static long calculaCRC(byte[] array) {
+        CRC32 crc = new CRC32();
 
+        crc.update(array);
+
+        long valor = crc.getValue();
+
+        return valor;
+    }
+
+    public static void buildAndValidateFile(int finalPacketSeqNumber) throws Exception {
+        //remove os delimiters e salva o arquivo no caminho indicado pelo usuario
+        byte[] lastPacketReceived = receivedFileData.get(finalPacketSeqNumber);
+
+        List<Byte> auxList = new ArrayList<>();
+
+        for (int i = 0; i < lastPacketReceived.length; i++) {
+            if (lastPacketReceived[i] != 124) {
+                auxList.add(lastPacketReceived[i]);
+            }
+        }
+
+        byte[] finalArray = new byte[auxList.size()];
+
+        for (int i = 0; i < auxList.size(); i++) {
+            finalArray[i] = auxList.get(i);
+        }
+
+        receivedFileData.put(finalPacketSeqNumber, finalArray);
+
+        int totalByteCount = 0;
+
+        for (byte[] fileData : receivedFileData.values()) {
+            totalByteCount += fileData.length;
+        }
+
+        totalByteCount += (receivedFileData.size() * 2) + 1;
+
+        byte[] allFileBytes = new byte[totalByteCount];
+
+        int copyStopped = 0;
+        int indexStart = 0;
+
+        byte[] lineSeparator = System.getProperty("line.separator").getBytes();
+
+        for (byte[] value: receivedFileData.values()) {
+            for (copyStopped = copyStopped, indexStart = 0; indexStart < value.length; copyStopped++, indexStart++ ) {
+                allFileBytes[copyStopped] = value[indexStart];
+            }
+
+            //isso talvez quebre em outros sistemas operacionais nao-Windows, pq cada OS trata isso de forma diferente
+
+            copyStopped++;
+            allFileBytes[copyStopped] = lineSeparator[0];
+
+            copyStopped++;
+            allFileBytes[copyStopped] = lineSeparator[1];
+        }
+
+        Scanner in = new Scanner(System.in);
+
+        System.out.println("Digite a pasta de destino do arquivo: ");
+
+        String fileDirectory = in.nextLine();
+
+        fileDirectory = "C:\\Users\\Felipe\\Desktop";
+
+        in.close();
+
+        FileOutputStream fos = new FileOutputStream(fileDirectory + "\\arquivo recebido.txt");
+
+        fos.write(allFileBytes);
+
+        System.out.println("Salvou o arquivo com sucesso");
+
+        System.exit(0);
     }
 }

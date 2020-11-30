@@ -434,8 +434,6 @@ public class ClientEnvia {
 
         long valor = crc.getValue();
 
-        //System.out.println("Valor crc: " + valor);
-
         return valor;
     }
 
@@ -454,18 +452,18 @@ public class ClientEnvia {
         long valor = 1215645;
 
         //12 pacotes
-        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 1));
-        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 2));
-        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 3));
-        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 4));
-        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 5));
-        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 6));
-        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 7));
-        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 8));
-        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 9));
-        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 10));
-        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 11));
-        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 12));
+        //packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 1));
+//        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 2));
+//        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 3));
+//        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 4));
+//        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 5));
+//        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 6));
+//        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 7));
+//        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 8));
+//        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 9));
+//        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 10));
+//        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 11));
+//        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 12));
         //packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 13, true));
 
         Path path = Paths.get(filepath);
@@ -473,7 +471,7 @@ public class ClientEnvia {
         List<String> fileContent = Files.readAllLines(path);
 
         //MOCK, ALTERAR PRA 0 QUANDO FOR VERSAO FINAL
-        int numeroSequencia = 13;
+        int numeroSequencia = 1;
 
         //coloca na lista de dados de cada packet o que deve ser enviado, em ordem
         for (int i = 0; i < fileContent.size(); i++) {
