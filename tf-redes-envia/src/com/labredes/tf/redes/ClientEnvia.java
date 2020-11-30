@@ -5,6 +5,9 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketTimeoutException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.zip.CRC32;
@@ -133,6 +136,8 @@ public class ClientEnvia {
 
         DatagramPacketInfo packetInfo = null;
 
+        DatagramPacketResponse response = null;
+
         List<String> acksReceived = new ArrayList<String>();
 
         //trocar por slow start max packages?
@@ -151,7 +156,7 @@ public class ClientEnvia {
                     }
 
                     sendPacket(packetInfo);
-                    DatagramPacketResponse response = receivePacket();
+                    response = receivePacket();
 
                     checkReplicateAck(response, packetInfo.getSeq());
 
@@ -169,7 +174,7 @@ public class ClientEnvia {
                 quantPacketSend++;
             }
 
-            String finalServerResponse = "";
+            String finalServerResponse = response.getMessage().trim();
 
             if (packetInfo.isFinalPacket()) {
                 while (!finalServerResponse.equals("FINISHED")) {
@@ -452,57 +457,62 @@ public class ClientEnvia {
         packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 1));
         packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 2));
         packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 3));
-//        //packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 4));
-//        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 5));
-//        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 6));
-//        //packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 7));
-//        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 8));
-//        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 9));
-//        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 10));
-        //packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 11));
+        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 4));
+        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 5));
+        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 6));
+        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 7));
+        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 8));
+        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 9));
+        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 10));
+        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 11));
         packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 12));
-        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 13, true));
+        //packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 13, true));
 
+        Path path = Paths.get(filepath);
 
-//        Path path = Paths.get(filepath);
-//
-//        List<String> data = Files.readAllLines(path);
-//
-//        //MOCK, ALTERAR PRA 0 QUANDO FOR VERSAO FINAL
-//        int numeroSequencia = 13;
-//
-//        //coloca na lista de dados de cada packet o que deve ser enviado, em ordem
-//        for (int i = 0; i < data.size(); i++) {
-//
-//            String content = data.get(i);
-//            final int MAX_BYTES = 300;
-//
-//            if (content.toCharArray().length < MAX_BYTES) {
-//                char[] contentBytes = new char[MAX_BYTES];
-//                char[] contentChars = content.toCharArray();
-//
-//                for (int j = 0; j < contentChars.length; j++) {
-//                    contentBytes[j] = contentChars[j];
-//                }
-//
-//                for (int j = contentChars.length; j < MAX_BYTES; j++) {
-//                    contentBytes[j] = FILE_END_DELIMITER_CHAR;
-//                }
-//
-//                content = new String(contentBytes);
-//
-//            }
-//
-//            byte[] arrayBytes = content.getBytes();
-//
-//            long crc = calculaCRC(arrayBytes);
-//
-//            packets.add(new DatagramPacketInfo(arrayBytes, crc, numeroSequencia));
-//
-//            numeroSequencia++;
-//
-//        }
-//
-//        in.close();
+        List<String> fileContent = Files.readAllLines(path);
+
+        //MOCK, ALTERAR PRA 0 QUANDO FOR VERSAO FINAL
+        int numeroSequencia = 13;
+
+        //coloca na lista de dados de cada packet o que deve ser enviado, em ordem
+        for (int i = 0; i < fileContent.size(); i++) {
+
+            String content = fileContent.get(i);
+            final int MAX_BYTES = 300;
+
+            if (content.toCharArray().length < MAX_BYTES) {
+                char[] contentBytes = new char[MAX_BYTES];
+                char[] contentChars = content.toCharArray();
+
+                for (int j = 0; j < contentChars.length; j++) {
+                    contentBytes[j] = contentChars[j];
+                }
+
+                for (int j = contentChars.length; j < MAX_BYTES; j++) {
+                    contentBytes[j] = FILE_END_DELIMITER_CHAR;
+                }
+
+                content = new String(contentBytes);
+
+            }
+
+            byte[] arrayBytes = content.getBytes();
+
+            long crc = calculaCRC(arrayBytes);
+
+            DatagramPacketInfo packet = new DatagramPacketInfo(arrayBytes, crc, numeroSequencia);
+
+            if(fileContent.size() - 1 == i){
+                packet.setFinalPacket(true);
+            }
+
+            packets.add(packet);
+
+            numeroSequencia++;
+
+        }
+
+        in.close();
     }
 }

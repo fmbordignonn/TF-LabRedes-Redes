@@ -140,10 +140,6 @@ class ClientRecebe {
                 .filter(seq -> seq <= seqReceived)
                 .collect(Collectors.toList());
 
-        if(seqReceived == 13 ){
-            System.out.println("asda");
-        }
-
         //verifica se os ultimos pacotes antes do que chegou agora chegaram ok..
         //ver se o size nao vai buga
         for (int seq = 1; seq <= seqReceived; seq++) {
