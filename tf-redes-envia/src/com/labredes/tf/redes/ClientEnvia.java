@@ -101,8 +101,6 @@ public class ClientEnvia {
 
                     acksReceived.add("recebe response: " + response.getMessage() + ":" + response.getSeq());
 
-
-
                 }
 
                 for (int i = 0; i < acksReceived.size(); i++) {
@@ -438,16 +436,9 @@ public class ClientEnvia {
 
         Scanner in = new Scanner(System.in);
 
-        System.out.println("\n---- Escolha um arquivo ----\n");
-        System.out.println("1 - case 1, 300 bytes");
-        System.out.println("2 - case 1, ? bytes");
+        System.out.println("Digite o caminho do arquivo texto para enviar:");
 
-        int input = in.nextInt();
-
-        //String filepath = "C:\\Users\\Felipe\\Desktop\\Trabalho final redes\\TF-LabRedes-Redes\\tf-redes-envia\\input\\case1.txt";
-
-
-        String filepath = "C:\\Users\\feeel\\Desktop\\TF-LabRedes-Redes\\tf-redes-envia\\input\\case1.txt";
+        String filepath = in.nextLine();
 
         long valor = 1215645;
 

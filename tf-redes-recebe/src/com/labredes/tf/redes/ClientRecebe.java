@@ -40,7 +40,6 @@ class ClientRecebe {
 
                 do {
                     //ultimo packet recebido
-                    //validar se recebeu o ultimo?
 
                     missingPacket = checkMissingPackets(finalPacketSeqNumber);
 
@@ -259,8 +258,6 @@ class ClientRecebe {
         System.out.println("Digite a pasta de destino do arquivo: ");
 
         String fileDirectory = in.nextLine();
-
-        //fileDirectory = "C:\\Users\\Felipe\\Desktop";
 
         in.close();
 
