@@ -226,6 +226,7 @@ class ClientRecebe {
         List<Byte> auxList = new ArrayList<>();
 
         for (int i = 0; i < lastPacketReceived.length; i++) {
+            //124 é o bytecode para o delimiter setado lá no client envia
             if (lastPacketReceived[i] != 124) {
                 auxList.add(lastPacketReceived[i]);
             }
