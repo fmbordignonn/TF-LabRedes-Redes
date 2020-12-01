@@ -281,6 +281,7 @@ class ClientRecebe {
 
         File file = new File(fileDirectory + "\\arquivo recebido.txt");
 
+        //nao conseguimos implementar o hash pois nao deu tempo
         file.hashCode();
 
         System.out.println("Salvou o arquivo com sucesso");
