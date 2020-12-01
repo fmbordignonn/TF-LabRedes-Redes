@@ -52,12 +52,14 @@ public class ClientEnvia {
 
         ipAddress = InetAddress.getByName("localhost");
 
+        //Definindo timeout pro socket (neste caso é 3 segundos)
         clientSocket.setSoTimeout(3*1000);
 
         System.out.println("\nConexão estabelecida!");
 
         createPackets();
 
+        //neste momento, temos todos os pacotes criados, tudo pronto pra enviar para o server
         int listIterator = initializeSlowStart(SLOW_START_MAX_DATA_PACKAGES);
 
         if (listIterator >= packets.size()) {
@@ -136,7 +138,6 @@ public class ClientEnvia {
 
         List<String> acksReceived = new ArrayList<String>();
 
-        //trocar por slow start max packages?
         int quantPacketSend = SLOW_START_MAX_DATA_PACKAGES + 1;
 
         try {
@@ -199,9 +200,8 @@ public class ClientEnvia {
     }
 
     public static void checkReplicateAck(DatagramPacketResponse response, int seqSent) throws Exception {
-        //ACK duplicado, deu pau..
+        //ACK replicado, deu pau..
         if (seqSent != response.getSeq() - 1) {
-            //System.out.println("recebeu um ack replicado");
 
             int replicado = response.getSeq();
 
@@ -225,14 +225,15 @@ public class ClientEnvia {
                             .stream()
                             .filter(x -> x.getSeq() == seq)
                             .findFirst()
-                            //TEMPORARIO
-                            .orElse(null);
-                    //tecnicamente, o programa NUNCA vai cair nesse orElseThrow,pq o sequenciamento de pacotes vai estar correto,
-                    //ele tá aqui só pq enquanto estamos testando com pacotes mockados, eles nao sao perdidos na rede, mas sim deletados
-                    //no lado do client
-                    //.orElseThrow(() -> new Exception("Não foi encontrado o pacote que falhou no envio"));
+                            //TEMPORARIO, APENAS PARA USAR DADOS MOCKADOS
+                            //.orElse(null);
 
-                    //TEMPORARIO TBM
+                            //tecnicamente, o programa NUNCA vai cair nesse orElseThrow,pq o sequenciamento de pacotes vai estar correto,
+                            //ele tá aqui só pq enquanto estamos testando com pacotes mockados, eles nao sao perdidos na rede, mas sim deletados
+                            //no lado do client
+                            .orElseThrow(() -> new Exception("Não foi encontrado o pacote que falhou no envio"));
+
+                    //UTILIZADO APENAS PARA DADOS MOCKADOS
                     if (packet == null) {
                         if (seq == 4) {
                             packet = new DatagramPacketInfo(new byte[]{4, 4, 4, 4}, 123453252, seq);
@@ -259,7 +260,6 @@ public class ClientEnvia {
                         }
                     }
 
-
                     System.out.println("REENVIANDO PACOTE QUE FOI PERDIDO - SEQ[" + replicado + "]");
 
                     sendPacket(packet);
@@ -268,26 +268,27 @@ public class ClientEnvia {
 
                     System.out.println("PACOTE QUE HAVIA FALHADO RECEBIDO COM SUCESSO!");
 
-                    //removendo que este pacote foi perdido
+                    //removendo que este pacote da lista de pacotes perdidos
                     acksReplicados.remove(seq);
                 }
             }
         }
     }
 
+    //método responsavel por enviar pacotes que tenham falhado pouco antes do ultimo pacote ser enviado
     public static String sendLastMissingPackets() throws Exception{
         DatagramPacketResponse newResponse = null;
 
         List<Integer> packetsLostSeqNumber = acksReplicados.entrySet().stream()
-                //se ja tiver 3 ou mais acks na lista...
+                //se ja tiver 1 ou mais acks na lista...
                 .filter(x -> x.getValue() >= 1)
                 //pega a key (seq do pacote perdido)...
                 .map(Map.Entry::getKey)
                 .collect(Collectors.toList());
 
         if (!packetsLostSeqNumber.isEmpty()) {
-            //value aqui é o seq do pacote perdido
 
+            //seq aqui é o seq do pacote perdido
             for (int seq : packetsLostSeqNumber) {
                 DatagramPacketInfo packet = packets
                         .stream()
@@ -381,7 +382,7 @@ public class ClientEnvia {
         String[] split = new String(message.getData()).split("-");
 
         if (split[0].trim().equals("FINISHED")) {
-            //nao importa o seq aqui
+            //nao importa o seq aqui, pq é o ultimo pacote do server
             return new DatagramPacketResponse(split[0], 1);
         }
 
@@ -436,9 +437,10 @@ public class ClientEnvia {
 
         String filepath = in.nextLine();
 
+        //mock para CRC
         long valor = 1215645;
 
-        //12 pacotes
+        //12 pacotes - MOCKADOS, não utilizados na versão final
         //packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 1));
 //        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 2));
 //        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 3));
@@ -453,14 +455,18 @@ public class ClientEnvia {
 //        packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 12));
         //packets.add(new DatagramPacketInfo("mock".getBytes(), valor, 13, true));
 
+        //le o caminho do arquivo
         Path path = Paths.get(filepath);
 
+        //monta uma lista com todas as linhas
         List<String> fileContent = Files.readAllLines(path);
 
-        //MOCK, ALTERAR PRA 0 QUANDO FOR VERSAO FINAL
+        //caso utilizar execução em MOCK, colocar esse valor como o proximo  seq number a ser enviado.
         int numeroSequencia = 1;
 
         //coloca na lista de dados de cada packet o que deve ser enviado, em ordem
+        //IMPORTANTE: esse método leva em conta que todas linhas do arquivo possuem 300 bytes (300 caracteres), assim como é visto no case1, dentro da folder input,
+        //comportamentos inesperados podem ocorrer caso essa condição não seja verdadeira
         for (int i = 0; i < fileContent.size(); i++) {
 
             String content = fileContent.get(i);
@@ -474,6 +480,7 @@ public class ClientEnvia {
                     contentBytes[j] = contentChars[j];
                 }
 
+                //Este método adiciona delimiters para os ultimos pacotes que nao tem 300 bytes terem delimitador
                 for (int j = contentChars.length; j < MAX_BYTES; j++) {
                     contentBytes[j] = FILE_END_DELIMITER_CHAR;
                 }
@@ -484,10 +491,12 @@ public class ClientEnvia {
 
             byte[] arrayBytes = content.getBytes();
 
+            //realizando calculo do CRC
             long crc = calculaCRC(arrayBytes);
 
             DatagramPacketInfo packet = new DatagramPacketInfo(arrayBytes, crc, numeroSequencia);
 
+            //Aqui definimos o pacote final a ser enviado
             if(fileContent.size() - 1 == i){
                 packet.setFinalPacket(true);
             }
@@ -495,7 +504,6 @@ public class ClientEnvia {
             packets.add(packet);
 
             numeroSequencia++;
-
         }
 
         in.close();
