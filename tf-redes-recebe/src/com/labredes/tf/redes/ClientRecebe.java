@@ -69,8 +69,6 @@ class ClientRecebe {
                 break;
             }
 
-            //insere no dicionario de pacotes recebidos os dados desse arquivo, com chave = seq
-
             long crc = calculaCRC(packetInfo.getFileData());
 
             if (crc == packetInfo.getCRC()) {
@@ -79,6 +77,7 @@ class ClientRecebe {
                 System.out.println("Algo se perdeu no caminho do pacote");
             }
 
+            //insere no dicionario de pacotes recebidos os dados desse arquivo, com chave = seq
             receivedFileData.put(packetInfo.getSeq(), packetInfo.getFileData());
 
             int missingPacket = checkMissingPackets(packetInfo.getSeq());

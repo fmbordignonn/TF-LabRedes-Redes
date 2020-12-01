@@ -268,8 +268,6 @@ public class ClientEnvia {
 
                     System.out.println("PACOTE QUE HAVIA FALHADO RECEBIDO COM SUCESSO!");
 
-                    //ver oq fazer com o response aqui
-
                     //removendo que este pacote foi perdido
                     acksReplicados.remove(seq);
                 }
@@ -295,14 +293,14 @@ public class ClientEnvia {
                         .stream()
                         .filter(x -> x.getSeq() == seq)
                         .findFirst()
-                        //TEMPORARIO
+                        //PARA UTILIZAR DADOS MOCKADOS, NÃO É NECESSARIO PARA EXECUÇÃO FINAL
                         .orElse(null);
                 //tecnicamente, o programa NUNCA vai cair nesse orElseThrow,pq o sequenciamento de pacotes vai estar correto,
                 //ele tá aqui só pq enquanto estamos testando com pacotes mockados, eles nao sao perdidos na rede, mas sim deletados
                 //no lado do client
                 //.orElseThrow(() -> new Exception("Não foi encontrado o pacote que falhou no envio"));
 
-                //TEMPORARIO TBM
+                //PARA UTILIZAR DADOS MOCKADOS, NÃO É NECESSARIO PARA EXECUÇÃO FINAL
                 if (packet == null) {
                     if (seq == 1) {
                         packet = new DatagramPacketInfo(new byte[]{1,1,1,1}, 123453252, seq);
@@ -368,8 +366,6 @@ public class ClientEnvia {
                 }
 
                 System.out.println("PACOTE QUE HAVIA FALHADO RECEBIDO COM SUCESSO!");
-
-                //ver oq fazer com o response aquinewResponse = receivePacket();
 
                 //removendo que este pacote foi perdido
                 acksReplicados.remove(seq);
